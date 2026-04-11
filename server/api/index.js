@@ -31,8 +31,16 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/cuotas', cuotasRoutes);
 
 // Ruta de prueba para comprobar que el servidor está encendido y funcionando
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', mensaje: 'Servidor funcionando' });
+app.get('/api/health', (_req, res) => {
+  const mongoose = require('mongoose');
+  const dbEstado = mongoose.connection.readyState;
+  // 0: desconectado, 1: conectado, 2: conectando, 3: desconectando
+  const dbOk = dbEstado === 1;
+  res.status(dbOk ? 200 : 503).json({
+    status: dbOk ? 'ok' : 'error',
+    servidor: 'funcionando',
+    base_de_datos: dbOk ? 'conectada' : 'desconectada',
+  });
 });
 
 // En local arrancamos el servidor en el puerto 5000.
