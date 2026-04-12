@@ -1,12 +1,16 @@
 import User from '../models/Usuario.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { validarLogin } from '../validators/validarRegistros.js';
 
 export const login = async (req, res) => {
 
     try {
         const correo = req.body.correo;
         const contrasena = req.body.contrasena;
+
+        const { valido, errores } = validarLogin({ correo, contrasena });
+        if (!valido) return res.status(400).json({ mensaje: 'Datos inválidos', errores });
 
         const usuario = await User.findOne({ correo: correo });
         if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
