@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const medicionSchema = new mongoose.Schema({
     cliente_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
@@ -28,4 +28,4 @@ const medicionSchema = new mongoose.Schema({
     observaciones: { type: String }
 });
 
-module.exports = mongoose.model('Medicion', medicionSchema);
+export default mongoose.model('Medicion', medicionSchema);

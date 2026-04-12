@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 /**
  * Se generan automaticamente
@@ -15,4 +15,4 @@ const pagoSchema = new mongoose.Schema({
     registrado_por: {type: mongoose.Schema.Types.ObjectId, ref: 'Usuario'}, // Se añadira al confirmar el pago
 });
 
-module.exports = mongoose.model('Pago', pagoSchema);
+export default mongoose.model('Pago', pagoSchema);

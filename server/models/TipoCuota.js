@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const tipoCuotaSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
@@ -6,4 +6,4 @@ const tipoCuotaSchema = new mongoose.Schema({
     importe: { type: Number, required: true },
 });
 
-module.exports = mongoose.model('TipoCuota', tipoCuotaSchema);
+export default mongoose.model('TipoCuota', tipoCuotaSchema);

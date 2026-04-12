@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const usuarioSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
@@ -16,4 +16,4 @@ const usuarioSchema = new mongoose.Schema({
     tipo_cuota: { type: mongoose.Schema.Types.ObjectId, ref: 'TipoCuota' }, // solo cliente
 })
 
-module.exports = mongoose.model('Usuario', usuarioSchema);
+export default mongoose.model('Usuario', usuarioSchema);

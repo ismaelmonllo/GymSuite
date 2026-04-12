@@ -1,4 +1,4 @@
-const mongoose = require('mongoose'); // Mongoose: nos facilita trabajar con la base de datos MongoDB
+import mongoose from 'mongoose';
 
 // Conexión a la base de datos MongoDB usando las URLs guardadas en el archivo .env
 // Si la URI principal falla, intenta conectar con la URI de respaldo
@@ -19,4 +19,4 @@ const conectarDB = async () => {
   }
 };
 
-module.exports = conectarDB;
+export default conectarDB;
