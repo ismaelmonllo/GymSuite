@@ -1,11 +1,20 @@
-import User from '../models/Usuario.js';
+import User from '../models/UsuarioModel.js';
 
-// Obtener todos los usuarios con rol 'cliente' de la base de datos
+// Obtener todos los usuarios con rol 'cliente' de la base de datos y devolverlos en la respuesta, aplicando filtros opcionales
 export const listarClientes = async (req, res) => {
 
     try {
 
-        const clientes = await User.find({ rol: 'cliente' });
+        const { activo, nivel, tipo_cuota } = req.query;
+
+        // Construir un filtro dinámico según los parámetros recibidos
+        const filtro = { rol: 'cliente' };
+        if (activo !== undefined) filtro.activo = activo;
+        if (nivel) filtro.nivel = nivel;
+        if (tipo_cuota) filtro.tipo_cuota = tipo_cuota;
+
+        // Buscar los clientes que coincidan con el filtro construido
+        const clientes = await User.find(filtro);
         return res.status(200).json({ clientes });
 
     } catch (error) {

@@ -8,12 +8,12 @@ import mongoose from 'mongoose';
 import conectarDB from '../config/db.js';
 
 // Importar todas las rutas de la API
-import authRoutes from '../routes/auth.js';
-import clientesRoutes from '../routes/clientes.js';
-import entrenadoresRoutes from '../routes/entrenadores.js';
-import medicionesRoutes from '../routes/mediciones.js';
-import pagosRoutes from '../routes/pagos.js';
-import cuotasRoutes from '../routes/cuotas.js';
+import authRoutes from '../routes/authRoutes.js';
+import clientesRoutes from '../routes/clientesRoutes.js';
+import entrenadoresRoutes from '../routes/entrenadoresRoutes.js';
+import medicionesRoutes from '../routes/medicionesRoutes.js';
+import pagosRoutes from '../routes/pagosRoutes.js';
+import cuotasRoutes from '../routes/cuotasRoutes.js';
 
 const app = express();
 
