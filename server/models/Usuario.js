@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+// Esquema unificado para todos los usuarios del sistema (admin, entrenador y cliente)
+// Los campos nivel y tipo_cuota solo aplican a los usuarios con rol 'cliente'
 const usuarioSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
     apellidos: { type: String, required: true },

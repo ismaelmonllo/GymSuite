@@ -1,10 +1,8 @@
 import mongoose from 'mongoose';
 
-/**
- * Se generan automaticamente
- * Se crea con fecha y registrado_por vacio
- * Al confirmar se añade fecha y registrado_por
- */
+// Esquema para registrar los pagos de cuota de los clientes
+// Los pagos se generan automáticamente: se crean con fecha y registrado_por vacíos
+// y se rellenan al confirmar el pago manualmente
 const pagoSchema = new mongoose.Schema({
     cliente_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     mes: {type:String, required: true},

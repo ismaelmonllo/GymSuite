@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+// Esquema para registrar las mediciones antropométricas de un cliente en una fecha concreta
+// Todos los campos numéricos son opcionales para permitir registros parciales
 const medicionSchema = new mongoose.Schema({
     cliente_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     entrenador_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
