@@ -16,6 +16,6 @@ router.put('/:id', verificarToken, verificarRol('admin', 'entrenador'), editarCl
 // PATCH /api/clientes/:id/baja – Dar de baja a un cliente (baja lógica)
 router.patch('/:id/baja', verificarToken, verificarRol('admin', 'entrenador'), darDeBaja);
 // PATCH /api/clientes/:id/cuota – Cambiar el tipo de cuota de un cliente
-router.patch('/:id/couta', verificarToken, verificarRol('admin', 'entrenador'), cambiarCuota);
+router.patch('/:id/cuota', verificarToken, verificarRol('admin', 'entrenador'), cambiarCuota);
 
 export default router;

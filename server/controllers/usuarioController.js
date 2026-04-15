@@ -1,4 +1,7 @@
+import bcrypt from 'bcrypt';
 import User from '../models/UsuarioModel.js';
+import { validarCrearCliente, validarCrearTrabajador, validarEditarUsuario } from '../validators/validarRegistros.js';
+import { validarObjectId } from '../validators/validarCampos.js';
 
 // Obtener todos los usuarios con rol 'cliente' de la base de datos y devolverlos en la respuesta, aplicando filtros opcionales
 export const listarClientes = async (req, res) => {
@@ -118,7 +121,7 @@ export const editarCliente = async (req, res) => {
 
 }
 
-// Desactivar un cliente marcando su campo 'activo' como false (baja lógica, no se borra el registro)
+// Desactivar un usuario marcando su campo 'activo' como false (baja lógica, no se borra el registro)
 export const darDeBaja = async (req, res) => {
 
     try {
@@ -161,6 +164,128 @@ export const cambiarCuota = async (req, res) => {
         if (!clienteActualizado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
 
         return res.status(200).json({ mensaje: 'Cliente editado correctamente', cliente: clienteActualizado });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+    
+}
+
+// Obtener todos los empleados (admin y entrenador) de la base de datos, aplicando filtros opcionales
+export const listarEmpleados = async (req, res) => {
+
+    try {
+
+        const { activo, rol } = req.query;
+
+        // Rechazar peticiones que intenten filtrar por rol de cliente
+        if (rol === 'cliente') return res.status(400).json({ mensaje: 'Rol no válido para este endpoint' });
+
+        // Construir un filtro dinámico: si no se especifica rol, devolver todos los empleados
+        const filtro = { rol: rol || { $in: ['admin', 'entrenador'] } };
+        if (activo !== undefined) filtro.activo = activo;
+
+        // Buscar los empleados que coincidan con el filtro construido
+        const empleados = await User.find(filtro);
+        return res.status(200).json({ empleados });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Buscar un empleado por su ID y devolverlo si existe y tiene rol 'admin' o 'entrenador'
+export const verEmpleado = async (req, res) => {
+
+    try {
+
+        const empleado = await User.findById(req.params.id);
+
+        // Devolver el empleado si existe y su rol es correcto, sino devolver 404
+        if (!empleado || (empleado.rol !== 'admin' && empleado.rol !== 'entrenador')) {
+            return res.status(404).json({ mensaje: 'Empleado no encontrado' });
+        }
+
+        return res.status(200).json({ empleado });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Crear un nuevo empleado (entrenador o admin): validar datos, comprobar duplicados, cifrar contraseña y guardar
+export const crearEmpleado = async (req, res) => {
+
+    try {
+
+        const { nombre, apellidos, correo, contrasena, telefono, direccion, fecha_nacimiento, DNI, rol } = req.body;
+
+        // Validar el formato de todos los campos antes de continuar
+        const { valido, errores } = validarCrearTrabajador(req.body);
+        if (!valido) return res.status(400).json({ errores });
+
+        // Comprobar que no exista ya un usuario con el mismo DNI o correo
+        const usuarioExistente = await User.findOne({ $or: [{ DNI }, { correo }] });
+        if (usuarioExistente) return res.status(400).json({ mensaje: 'Ya existe un usuario con ese DNI o correo' });
+
+        // Cifrar la contraseña antes de guardarla en la base de datos
+        const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
+
+        // Crear el documento con el rol recibido (admin o entrenador)
+        const nuevoEmpleado = new User({
+            nombre,
+            apellidos,
+            correo,
+            contrasena: contrasenaCifrada,
+            telefono,
+            direccion,
+            fecha_nacimiento,
+            DNI,
+            rol
+        });
+        await nuevoEmpleado.save();
+        return res.status(201).json({ mensaje: 'Empleado creado correctamente', empleado: nuevoEmpleado });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Actualizar los datos de un empleado, ignorando campos de cliente y campos no modificables
+export const editarEmpleado = async (req, res) => {
+
+    try {
+
+        // Comprobar que el usuario objetivo es un empleado, no un cliente
+        const usuario = await User.findById(req.params.id);
+        if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        if (usuario.rol === 'cliente') return res.status(403).json({ mensaje: 'No se puede editar un cliente desde este endpoint' });
+
+        // Excluir rol, contraseña, fecha_alta y campos exclusivos de cliente
+        const { rol, contrasena, fecha_alta, nivel, tipo_cuota, ...datos } = req.body;
+
+        // Validar el formato de los datos editables
+        const { valido, errores } = validarEditarUsuario(datos);
+        if (!valido) return res.status(400).json({ errores });
+
+        // Actualizar solo los campos permitidos y devolver el documento actualizado
+        const empleadoActualizado = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: datos },
+            { new: true }
+        );
+        return res.status(200).json({ mensaje: 'Empleado editado correctamente', empleado: empleadoActualizado });
 
     } catch (error) {
 
