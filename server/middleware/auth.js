@@ -30,6 +30,13 @@ export const verificarRolBody = (rolEsperado) => (req, res, next) => {
     next();
 };
 
+// Forzar el filtro de rol en query para que cada ruta solo devuelva su tipo de empleado
+// Evita que GET /api/entrenadores?rol=admin devuelva admins
+export const forzarRolQuery = (rolEsperado) => (req, res, next) => {
+    req.query.rol = rolEsperado;
+    next();
+};
+
 // Comprobar que el usuario autenticado tiene uno de los roles permitidos para la ruta
 // Se usa como middleware encadenado después de verificarToken
 export const verificarRol = (...roles) => (req, res, next) => {
