@@ -21,6 +21,15 @@ export const verificarToken = async (req, res, next) => {
 
 }
 
+// Comprobar que el campo 'rol' del body coincide con el rol esperado para esa ruta
+// Evita crear un admin por la ruta de entrenadores o viceversa
+export const verificarRolBody = (rolEsperado) => (req, res, next) => {
+    if (req.body.rol !== rolEsperado) {
+        return res.status(400).json({ mensaje: `El rol debe ser '${rolEsperado}' para este endpoint` });
+    }
+    next();
+};
+
 // Comprobar que el usuario autenticado tiene uno de los roles permitidos para la ruta
 // Se usa como middleware encadenado después de verificarToken
 export const verificarRol = (...roles) => (req, res, next) => {
