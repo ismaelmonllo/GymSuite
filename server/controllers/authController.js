@@ -1,5 +1,5 @@
 import User from '../models/UsuarioModel.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { validarLogin } from '../validators/validarRegistros.js';
 
