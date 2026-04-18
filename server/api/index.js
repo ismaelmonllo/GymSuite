@@ -36,13 +36,18 @@ app.use('/api/cuotas', cuotasRoutes);
 
 // Comprobar el estado del servidor y de la conexión con la base de datos
 app.get('/api/health', (_req, res) => {
+  // Traducir el código numérico de readyState a texto legible
+  const estadoTexto = { 0: 'desconectada', 1: 'conectada', 2: 'conectando', 3: 'desconectando' };
+
   const dbEstado = mongoose.connection.readyState;
-  // 0: desconectado, 1: conectado, 2: conectando, 3: desconectando
+  // Solo el estado 1 significa conexión activa y lista
   const dbOk = dbEstado === 1;
+
+  // Devolver 200 si la BD está lista, 503 si no lo está
   res.status(dbOk ? 200 : 503).json({
     status: dbOk ? 'ok' : 'error',
     servidor: 'funcionando',
-    base_de_datos: dbOk ? 'conectada' : 'desconectada',
+    base_de_datos: estadoTexto[dbEstado] ?? 'desconectada',
   });
 });
 
