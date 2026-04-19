@@ -11,6 +11,7 @@ const pagoSchema = new mongoose.Schema({
     pendiente: {type:Boolean, required: true, default: false},
     fecha: {type:Date}, // Se añadira al confirmar el pago
     registrado_por: {type: mongoose.Schema.Types.ObjectId, ref: 'Usuario'}, // Se añadira al confirmar el pago
+    grupo_pago: {type: mongoose.Schema.Types.ObjectId}, // Agrupa pagos de varios meses generados juntos
 });
 
 export default mongoose.model('Pago', pagoSchema);
