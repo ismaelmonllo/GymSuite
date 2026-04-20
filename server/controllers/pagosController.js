@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Pagos from '../models/Pagos.js';
+import Pagos from '../models/PagoModel.js';
 import Usuario from '../models/UsuarioModel.js';
 
 // Devolver el historial de pagos de un cliente concreto para que el entrenador o admin lo consulte
