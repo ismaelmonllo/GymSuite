@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
 import conectarDB from '../config/db.js';
-import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from '../config/swagger.js';
 
 // Importar todas las rutas de la API
@@ -26,9 +25,6 @@ app.use(express.json());
 
 // Conectar a MongoDB antes de empezar a atender peticiones
 conectarDB();
-
-// Montar la documentación interactiva de la API en /api/docs
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Registrar cada grupo de rutas bajo su prefijo correspondiente
 app.use('/api/auth', authRoutes);
@@ -54,6 +50,35 @@ app.get('/api/health', (_req, res) => {
     servidor: 'funcionando',
     base_de_datos: estadoTexto[dbEstado] ?? 'desconectada',
   });
+});
+
+// Servir el spec JSON en /api/docs/spec (lo consume la UI)
+app.get('/api/docs/spec', (_req, res) => res.json(swaggerSpec));
+
+// Servir la UI de Swagger cargando assets desde CDN (compatible con Vercel serverless)
+app.get('/api/docs', (_req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>GymSuite API Docs</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      SwaggerUIBundle({
+        url: '/api/docs/spec',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+        layout: 'BaseLayout'
+      });
+    </script>
+  </body>
+</html>`);
 });
 
 // Arrancar el servidor solo en local (en Vercel se importa `app` directamente como función serverless)
