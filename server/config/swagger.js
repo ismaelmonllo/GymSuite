@@ -1,6 +1,11 @@
 // Configurar la especificación OpenAPI 3.0 para toda la API de GymSuite
 // Los paths de las rutas se leen de los JSDoc en los archivos de routes/
 import swaggerJsdoc from 'swagger-jsdoc';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// __dirname no existe en ES modules; se reconstruye desde import.meta.url
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const options = {
     definition: {
@@ -125,8 +130,8 @@ const options = {
         },
         security: [{ bearerAuth: [] }],
     },
-    // Leer las anotaciones @swagger de todos los archivos de rutas
-    apis: ['./routes/*.js'],
+    // Ruta absoluta para que funcione igual en local y en Vercel
+    apis: [join(__dirname, '../routes/*.js')],
 };
 
 export default swaggerJsdoc(options);
