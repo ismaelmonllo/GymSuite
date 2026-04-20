@@ -1,4 +1,4 @@
-import Cuota from '../models/Cuota.js';
+import Cuota from '../models/TipoCuotaModel.js';
 
 // Devolver todas las cuotas disponibles para mostrarlas en el panel de admin o en el modal de cambio de cuota
 export const listarCuotas = async (req, res) => {
