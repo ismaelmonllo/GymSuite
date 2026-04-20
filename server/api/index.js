@@ -51,8 +51,7 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// En local arrancamos el servidor en el puerto 5000.
-// En Vercel esto no se ejecuta: Vercel importa directamente el app exportado abajo.
+// Arrancar el servidor solo en local (en Vercel se importa `app` directamente como función serverless)
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Servidor escuchando en http://localhost:${PORT}`));

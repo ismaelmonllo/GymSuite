@@ -7,8 +7,7 @@ import { validarLogin } from '../validators/validarRegistros.js';
 export const login = async (req, res) => {
 
     try {
-        const correo = req.body.correo;
-        const contrasena = req.body.contrasena;
+        const { correo, contrasena } = req.body;
 
         // Validar formato de los datos antes de consultar la base de datos
         const { valido, errores } = validarLogin({ correo, contrasena });
@@ -29,10 +28,11 @@ export const login = async (req, res) => {
             { expiresIn: '2h' }
         );
 
-        return res.status(200).json({ token: userToken })
+        return res.status(200).json({ token: userToken });
 
     } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message });
+
     }
 
 }

@@ -154,7 +154,7 @@ export const cambiarCuota = async (req, res) => {
 
         // Validar que el ID de la cuota tiene formato correcto antes de usarlo
         const { valido, error } = validarObjectId(nuevaCuota);
-        if (!valido) return res.status(400).json({ error });
+        if (!valido) return res.status(400).json({ mensaje: error });
 
         const clienteActualizado = await User.findByIdAndUpdate(
             req.params.id,

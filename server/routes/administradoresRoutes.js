@@ -1,3 +1,4 @@
+// Rutas de administradores: solo el admin puede gestionarlos
 import express from 'express';
 import { verificarToken, verificarRol, verificarRolBody, forzarRolQuery } from '../middleware/auth.js';
 import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja } from '../controllers/usuarioController.js';

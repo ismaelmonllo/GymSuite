@@ -10,8 +10,8 @@ export const obtenerPagos = async (req, res) =>  {
 
         const { id_usuario } = req.params;
 
-        // Buscar pagos del cliente y ordenar del más reciente al más antiguo por mes
-        // Se ordena por mes (string "YYYY-MM") porque fecha solo existe en pagos confirmados
+        // Buscar pagos del cliente y ordenar del más reciente al más antiguo
+        // Ordenar por mes (string "YYYY-MM") y no por fecha, porque fecha solo existe en pagos confirmados
         const pagos = await Pagos.find({ cliente_id: id_usuario}).sort({ mes: -1 });
 
         if (pagos.length === 0) return res.status(404).json({ mensaje: 'No se encontraron pagos registrados'});
@@ -32,8 +32,8 @@ export const obtenerMisPagos = async (req, res) =>  {
 
         const id_usuario = req.usuario.id;
 
-        // Buscar pagos del cliente y ordenar del más reciente al más antiguo por mes
-        // Se ordena por mes (string "YYYY-MM") porque fecha solo existe en pagos confirmados
+        // Buscar pagos del cliente y ordenar del más reciente al más antiguo
+        // Ordenar por mes (string "YYYY-MM") y no por fecha, porque fecha solo existe en pagos confirmados
         const pagos = await Pagos.find({ cliente_id: id_usuario}).sort({ mes: -1 });
 
         if (pagos.length === 0) return res.status(404).json({ mensaje: 'No se encontraron pagos registrados'});
@@ -73,12 +73,12 @@ export const generarPagos = async (req, res) => {
         // Filtrar clientes sin cuota asignada
         const clientesConCuota = clientes.filter(c => c.tipo_cuota);
 
-        // Obtener en una sola consulta los cliente_id que ya tienen pago este mes
-        // distinct devuelve un array con los valores únicos del campo, sin documentos completos
+        // Obtener los cliente_id con pago este mes para evitar duplicados
+        // distinct devuelve solo valores únicos sin cargar documentos completos en memoria
         const pagosExistentes = await Pagos.find({ mes: mesActual }).distinct('cliente_id');
 
-        // Convertir a Set de strings para poder buscar en O(1) al iterar los clientes
-        // Se convierte a string porque comparar ObjectIds con === siempre da false (son objetos distintos en memoria)
+        // Convertir a Set de strings para búsqueda en O(1)
+        // Convertir a string porque ObjectIds distintos en memoria no se comparan con === aunque representen el mismo id
         const yaGenerados = new Set(pagosExistentes.map(id => id.toString()));
 
         // Construir los nuevos pagos para clientes sin pago este mes
@@ -86,8 +86,8 @@ export const generarPagos = async (req, res) => {
         let clientesProcesados = 0;
         for (const cliente of clientesConCuota) {
 
-            // Convertir _id a string para poder compararlo con los del Set (misma razón que arriba)
-            // Si el cliente ya tiene un pago generado para el mes actual, saltar al siguiente (evita duplicados)
+            // Convertir _id a string para buscar en el Set (ObjectIds distintos en memoria, === siempre false)
+            // Saltar clientes que ya tienen pago generado este mes para evitar duplicados
             if (yaGenerados.has(cliente._id.toString())) continue;
 
             clientesProcesados++;
