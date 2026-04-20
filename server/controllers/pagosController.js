@@ -184,3 +184,111 @@ export const eliminarPagos = async (req, res) => {
 
     }
 }
+
+// FUNCIONES PARA STATS
+
+// Calcular el total recaudado en el mes actual (pagos confirmados, pendiente: false)
+export const obtenerStatsMes = async (req, res) => {
+
+    try {
+
+        const mesActual = formatearMes(new Date());
+
+        // Sumar los importes de los pagos confirmados del mes actual
+        const resultado = await Pagos.aggregate([
+            { $match: { mes: mesActual, pendiente: false } },
+            { $group: { _id: null, total: { $sum: '$importe' } } }
+        ]);
+
+        // aggregate devuelve array vacío si no hay datos; resultado[0] petaría sin esta comprobación
+        const total = resultado.length > 0 ? resultado[0].total : 0;
+
+        return res.status(200).json({ mes: mesActual, total });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Calcular el total recaudado por mes en los últimos 12 meses (pagos confirmados, pendiente: false)
+export const obtenerStatsAnual = async (req, res) => {
+
+    try {
+
+        const ahora = new Date();
+
+        // Calcular el mes límite inferior (hace 11 meses, para incluir el mes actual = 12 en total)
+        const mesInicio = formatearMes(sumarMeses(ahora, -11));
+        const mesFin = formatearMes(ahora);
+
+        // Agrupar por mes y sumar importes; solo pagos confirmados dentro del rango
+        const resultado = await Pagos.aggregate([
+            { $match: { mes: { $gte: mesInicio, $lte: mesFin }, pendiente: false } },
+            { $group: { _id: '$mes', total: { $sum: '$importe' } } },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Construir array con los 12 meses, poniendo 0 en los meses sin datos
+        const meses = [];
+        for (let i = -11; i <= 0; i++) {
+            const mes = formatearMes(sumarMeses(ahora, i));
+            const encontrado = resultado.find(r => r._id === mes);
+            meses.push({ mes, total: encontrado ? encontrado.total : 0 });
+        }
+
+        return res.status(200).json(meses);
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Contar cuántos pagos del mes actual están confirmados
+export const obtenerStatsMesPagados = async (req, res) => {
+
+    try {
+
+        // Calcular el mes actual en formato "YYYY-MM" para filtrar los pagos
+        const mesActual = formatearMes(new Date());
+
+        // Contar pagos del mes actual que ya han sido confirmados (pendiente: false)
+        // countDocuments es más eficiente que find().length porque no carga los documentos en memoria
+        const total = await Pagos.countDocuments({ mes: mesActual, pendiente: false });
+
+        return res.status(200).json({ mes: mesActual, total });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Contar cuántos pagos del mes actual siguen sin confirmar
+export const obtenerStatsMesPendientes = async (req, res) => {
+
+    try {
+
+        // Calcular el mes actual en formato "YYYY-MM" para filtrar los pagos
+        const mesActual = formatearMes(new Date());
+
+        // Contar pagos del mes actual que aún no han sido confirmados (pendiente: true)
+        // countDocuments es más eficiente que find().length porque no carga los documentos en memoria
+        const total = await Pagos.countDocuments({ mes: mesActual, pendiente: true });
+
+        return res.status(200).json({ mes: mesActual, total });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}

@@ -294,3 +294,64 @@ export const editarEmpleado = async (req, res) => {
     }
 
 }
+
+// FUNCIONES PARA STATS
+
+// Contar el total de clientes activos en la base de datos
+export const obtenerTotalClientes = async (req, res) => {
+
+    try {
+
+        // Contar solo los usuarios con rol 'cliente' y activos
+        const total = await User.countDocuments({ rol: 'cliente', activo: true });
+        return res.status(200).json({ total });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Contar el total de trabajadores activos (entrenadores y admins) en la base de datos
+export const obtenerTotalTrabajadores = async (req, res) => {
+
+    try {
+
+        // Contar los usuarios con rol 'entrenador' o 'admin' que estén activos
+        const total = await User.countDocuments({ rol: { $in: ['entrenador', 'admin'] }, activo: true });
+        return res.status(200).json({ total });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Contar los clientes dados de alta en el último mes y en el último año
+export const obtenerStatsAltas = async (req, res) => {
+
+    try {
+
+        const ahora = new Date();
+
+        // Calcular la fecha de inicio del mes actual y la de hace 12 meses
+        const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+        const inicioAnio = new Date(ahora.getFullYear() - 1, ahora.getMonth(), 1);
+
+        // Contar clientes cuya fecha_alta cae dentro de cada rango
+        const ultimoMes = await User.countDocuments({ rol: 'cliente', fecha_alta: { $gte: inicioMes } });
+        const ultimoAnio = await User.countDocuments({ rol: 'cliente', fecha_alta: { $gte: inicioAnio } });
+
+        return res.status(200).json({ ultimoMes, ultimoAnio });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
