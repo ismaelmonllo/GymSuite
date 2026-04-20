@@ -65,6 +65,14 @@ app.get('/api/docs', (_req, res) => {
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+    <style>
+      body { background: #1a1a1a; }
+      .swagger-ui { filter: invert(88%) hue-rotate(180deg); }
+      .swagger-ui .microlight,
+      .swagger-ui code,
+      .swagger-ui pre { filter: invert(100%) hue-rotate(180deg); }
+      .swagger-ui img { filter: invert(100%) hue-rotate(180deg); }
+    </style>
   </head>
   <body>
     <div id="swagger-ui"></div>
