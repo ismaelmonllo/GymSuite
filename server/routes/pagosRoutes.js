@@ -1,5 +1,5 @@
 import express from 'express';
-import { verificarToken, verificarRol } from '../middleware/auth.js';
+import { verificarToken, verificarRol, verificarCronSecret } from '../middleware/auth.js';
 import { obtenerPagos, obtenerMisPagos, generarPagos, registrarPago} from '../controllers/pagosController.js';
 
 
@@ -11,8 +11,11 @@ router.get('/cliente/:id_usuario', verificarToken, verificarRol(['admin', 'entre
 // Obtener el historial de pagos del cliente autenticado (para el propio cliente)
 router.get('/mis-pagos', verificarToken, verificarRol(['cliente']), obtenerMisPagos);
 
-// Generar los pagos del mes para todos los clientes activos (manual desde el panel de admin)
-router.post('/generar', verificarToken, verificarRol(['admin']), generarPagos);
+// Generar los pagos del mes manualmente desde el panel de admin
+router.post('/generar', verificarToken, verificarRol('admin'), generarPagos);
+
+// Generar los pagos del mes desde cron-job.org (solo con secret, sin JWT)
+router.post('/generar-cron', verificarCronSecret, generarPagos);
 
 // Registrar el cobro de una cuota, marcando todos los meses del grupo como pagados
 router.post('/registrar', verificarToken, verificarRol(['admin', 'entrenador']), registrarPago);

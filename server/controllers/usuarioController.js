@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import User from '../models/UsuarioModel.js';
+import Pagos from '../models/PagoModel.js';
 import { validarCrearCliente, validarCrearTrabajador, validarEditarUsuario } from '../validators/validarRegistros.js';
 import { validarObjectId } from '../validators/validarCampos.js';
 
@@ -144,7 +145,7 @@ export const darDeBaja = async (req, res) => {
 
 }
 
-// Asignar un nuevo tipo de cuota a un cliente validando que el ID de cuota sea válido
+// Asignar un nuevo tipo de cuota a un cliente, eliminar sus pagos pendientes y actualizar el documento
 export const cambiarCuota = async (req, res) => {
 
     try {
@@ -163,14 +164,17 @@ export const cambiarCuota = async (req, res) => {
 
         if (!clienteActualizado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
 
-        return res.status(200).json({ mensaje: 'Cliente editado correctamente', cliente: clienteActualizado });
+        // Eliminar los pagos pendientes del cliente para que se regeneren con la nueva cuota
+        await Pagos.deleteMany({ cliente_id: req.params.id, pendiente: true });
+
+        return res.status(200).json({ mensaje: 'Cuota actualizada correctamente', cliente: clienteActualizado });
 
     } catch (error) {
 
         res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
 
     }
-    
+
 }
 
 // Obtener todos los empleados (admin y entrenador) de la base de datos, aplicando filtros opcionales

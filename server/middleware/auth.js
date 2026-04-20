@@ -52,3 +52,13 @@ export const verificarRol = (...roles) => (req, res, next) => {
     }
 
 }
+
+// Verificar que la petición viene de cron-job.org comprobando el header x-cron-secret
+// Solo para rutas de cron: no requiere JWT ni usuario autenticado
+export const verificarCronSecret = (req, res, next) => {
+    const secret = req.headers['x-cron-secret'];
+    if (!secret || secret !== process.env.CRON_SECRET) {
+        return res.status(401).json({ mensaje: 'No autorizado' });
+    }
+    next();
+}
