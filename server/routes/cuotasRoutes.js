@@ -5,13 +5,86 @@ import { listarCuotas, crearCuota, editarCuota, eliminarCuota } from '../control
 
 const router = express.Router();
 
-// GET /api/cuotas – Obtener todas las cuotas disponibles (para el panel de admin y el modal de cambio de cuota)
+/**
+ * @swagger
+ * /cuotas:
+ *   get:
+ *     summary: Listar tipos de cuota
+ *     tags: [Cuotas]
+ *     responses:
+ *       200:
+ *         description: Lista de tipos de cuota
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/TipoCuota'
+ */
 router.get('/', verificarToken, verificarRol('admin', 'entrenador'), listarCuotas);
-// POST /api/cuotas – Crear una nueva cuota (solo admin)
+
+/**
+ * @swagger
+ * /cuotas:
+ *   post:
+ *     summary: Crear tipo de cuota
+ *     tags: [Cuotas]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TipoCuota'
+ *     responses:
+ *       201:
+ *         description: Cuota creada
+ *       400:
+ *         description: Datos inválidos
+ */
 router.post('/', verificarToken, verificarRol('admin'), crearCuota);
-// PUT /api/cuotas/:id – Editar una cuota existente (solo admin)
+
+/**
+ * @swagger
+ * /cuotas/{id}:
+ *   put:
+ *     summary: Editar tipo de cuota
+ *     tags: [Cuotas]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TipoCuota'
+ *     responses:
+ *       200:
+ *         description: Cuota actualizada
+ *       404:
+ *         description: Cuota no encontrada
+ */
 router.put('/:id', verificarToken, verificarRol('admin'), editarCuota);
-// DELETE /api/cuotas/:id – Eliminar una cuota (solo admin)
+
+/**
+ * @swagger
+ * /cuotas/{id}:
+ *   delete:
+ *     summary: Eliminar tipo de cuota
+ *     tags: [Cuotas]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cuota eliminada
+ *       404:
+ *         description: Cuota no encontrada
+ */
 router.delete('/:id', verificarToken, verificarRol('admin'), eliminarCuota);
 
 export default router;

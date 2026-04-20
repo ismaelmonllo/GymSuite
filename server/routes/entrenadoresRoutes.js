@@ -5,15 +5,116 @@ import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja 
 
 const router = express.Router();
 
-// GET /api/entrenadores – Obtener lista de entrenadores con filtros opcionales
+/**
+ * @swagger
+ * /entrenadores:
+ *   get:
+ *     summary: Listar entrenadores
+ *     tags: [Entrenadores]
+ *     parameters:
+ *       - in: query
+ *         name: buscar
+ *         schema: { type: string }
+ *       - in: query
+ *         name: activo
+ *         schema: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Lista de entrenadores
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Empleado'
+ */
 router.get('/', verificarToken, verificarRol('admin'), forzarRolQuery('entrenador'), listarEmpleados);
-// GET /api/entrenadores/:id – Obtener los datos de un entrenador concreto
+
+/**
+ * @swagger
+ * /entrenadores/{id}:
+ *   get:
+ *     summary: Ver entrenador por ID
+ *     tags: [Entrenadores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Datos del entrenador
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Empleado'
+ *       404:
+ *         description: Entrenador no encontrado
+ */
 router.get('/:id', verificarToken, verificarRol('admin'), verEmpleado);
-// POST /api/entrenadores – Crear un nuevo entrenador
+
+/**
+ * @swagger
+ * /entrenadores:
+ *   post:
+ *     summary: Crear entrenador
+ *     tags: [Entrenadores]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Empleado'
+ *     responses:
+ *       201:
+ *         description: Entrenador creado
+ *       400:
+ *         description: Datos inválidos o duplicados
+ */
 router.post('/', verificarToken, verificarRol('admin'), verificarRolBody('entrenador'), crearEmpleado);
-// PUT /api/entrenadores/:id – Editar los datos de un entrenador
+
+/**
+ * @swagger
+ * /entrenadores/{id}:
+ *   put:
+ *     summary: Editar entrenador
+ *     tags: [Entrenadores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Empleado'
+ *     responses:
+ *       200:
+ *         description: Entrenador actualizado
+ *       404:
+ *         description: Entrenador no encontrado
+ */
 router.put('/:id', verificarToken, verificarRol('admin'), editarEmpleado);
-// PATCH /api/entrenadores/:id/baja – Dar de baja a un entrenador (baja lógica)
+
+/**
+ * @swagger
+ * /entrenadores/{id}/baja:
+ *   patch:
+ *     summary: Dar de baja a un entrenador
+ *     tags: [Entrenadores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Entrenador dado de baja
+ *       404:
+ *         description: Entrenador no encontrado
+ */
 router.patch('/:id/baja', verificarToken, verificarRol('admin'), darDeBaja);
 
 export default router;

@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
 import conectarDB from '../config/db.js';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from '../config/swagger.js';
 
 // Importar todas las rutas de la API
 import authRoutes from '../routes/authRoutes.js';
@@ -24,6 +26,9 @@ app.use(express.json());
 
 // Conectar a MongoDB antes de empezar a atender peticiones
 conectarDB();
+
+// Montar la documentación interactiva de la API en /api/docs
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Registrar cada grupo de rutas bajo su prefijo correspondiente
 app.use('/api/auth', authRoutes);

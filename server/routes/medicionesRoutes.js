@@ -5,17 +5,136 @@ import { obtenerMediciones, obtenerMisMediciones, obtenerMedicion, crearMedicion
 
 const router = express.Router();
 
-// GET /api/mediciones – Obtener el historial de mediciones del cliente autenticado
+/**
+ * @swagger
+ * /mediciones:
+ *   get:
+ *     summary: Historial de mediciones del cliente autenticado
+ *     tags: [Mediciones]
+ *     responses:
+ *       200:
+ *         description: Lista de mediciones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Medicion'
+ *       404:
+ *         description: Sin mediciones registradas
+ */
 router.get('/', verificarToken, verificarRol('cliente'), obtenerMisMediciones);
-// GET /api/mediciones/cliente/:id_usuario – Obtener el historial de mediciones de un cliente concreto
+
+/**
+ * @swagger
+ * /mediciones/cliente/{id_usuario}:
+ *   get:
+ *     summary: Historial de mediciones de un cliente concreto
+ *     tags: [Mediciones]
+ *     parameters:
+ *       - in: path
+ *         name: id_usuario
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Lista de mediciones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Medicion'
+ *       404:
+ *         description: Sin mediciones registradas
+ */
 router.get('/cliente/:id_usuario', verificarToken, verificarRol('entrenador'), obtenerMediciones);
-// GET /api/mediciones/:id – Obtener una medición concreta por su id
+
+/**
+ * @swagger
+ * /mediciones/{id}:
+ *   get:
+ *     summary: Ver una medición concreta
+ *     tags: [Mediciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Datos de la medición
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Medicion'
+ *       404:
+ *         description: Medición no encontrada
+ */
 router.get('/:id', verificarToken, verificarRol('cliente', 'entrenador'), obtenerMedicion);
-// POST /api/mediciones – Crear una nueva medición
+
+/**
+ * @swagger
+ * /mediciones:
+ *   post:
+ *     summary: Registrar nueva medición
+ *     tags: [Mediciones]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Medicion'
+ *     responses:
+ *       201:
+ *         description: Medición creada
+ *       400:
+ *         description: Datos inválidos
+ */
 router.post('/', verificarToken, verificarRol('entrenador'), crearMedicion);
-// PUT /api/mediciones/:id – Editar una medición existente
+
+/**
+ * @swagger
+ * /mediciones/{id}:
+ *   put:
+ *     summary: Editar medición
+ *     tags: [Mediciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Medicion'
+ *     responses:
+ *       200:
+ *         description: Medición actualizada
+ *       404:
+ *         description: Medición no encontrada
+ */
 router.put('/:id', verificarToken, verificarRol('entrenador'), editarMedicion);
-// DELETE /api/mediciones/:id – Eliminar una medición
+
+/**
+ * @swagger
+ * /mediciones/{id}:
+ *   delete:
+ *     summary: Eliminar medición
+ *     tags: [Mediciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Medición eliminada
+ *       404:
+ *         description: Medición no encontrada
+ */
 router.delete('/:id', verificarToken, verificarRol('entrenador'), eliminarMedicion);
 
 export default router;
