@@ -6,20 +6,154 @@ import { obtenerTotalClientes, obtenerTotalTrabajadores, obtenerStatsAltas } fro
 
 const router = express.Router();
 
-// GET /api/stats/mes – Obtener el total recaudado en el mes actual
+/**
+ * @swagger
+ * /stats/mes:
+ *   get:
+ *     summary: Total recaudado en el mes actual
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Importe total de pagos confirmados este mes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: number
+ *                   example: 1240.50
+ */
 router.get('/mes', verificarToken, verificarRol('admin'), obtenerStatsMes);
-// GET /api/stats/anual – Obtener el total recaudado por mes en los últimos 12 meses
+
+/**
+ * @swagger
+ * /stats/anual:
+ *   get:
+ *     summary: Recaudación por mes en los últimos 12 meses
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Array con el total recaudado por mes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   mes:
+ *                     type: string
+ *                     example: '2026-03'
+ *                   total:
+ *                     type: number
+ *                     example: 1180
+ */
 router.get('/anual', verificarToken, verificarRol('admin'), obtenerStatsAnual);
-// GET /api/stats/mes-pagados – Contar cuántos pagos del mes actual están confirmados
+
+/**
+ * @swagger
+ * /stats/mes-pagados:
+ *   get:
+ *     summary: Número de pagos confirmados en el mes actual
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Cantidad de pagos con pendiente false este mes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   example: 18
+ */
 router.get('/mes-pagados', verificarToken, verificarRol('admin'), obtenerStatsMesPagados);
-// GET /api/stats/mes-pendientes – Contar cuántos pagos del mes actual siguen pendientes
+
+/**
+ * @swagger
+ * /stats/mes-pendientes:
+ *   get:
+ *     summary: Número de pagos pendientes en el mes actual
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Cantidad de pagos con pendiente true este mes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   example: 5
+ */
 router.get('/mes-pendientes', verificarToken, verificarRol('admin'), obtenerStatsMesPendientes);
 
-// GET /api/stats/total-clientes – Contar el total de clientes registrados
+/**
+ * @swagger
+ * /stats/total-clientes:
+ *   get:
+ *     summary: Total de clientes activos
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Número de clientes con activo true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   example: 42
+ */
 router.get('/total-clientes', verificarToken, verificarRol('admin'), obtenerTotalClientes);
-// GET /api/stats/total-trabajadores – Contar el total de trabajadores registrados
+
+/**
+ * @swagger
+ * /stats/total-trabajadores:
+ *   get:
+ *     summary: Total de trabajadores activos
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Número de entrenadores y admins con activo true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   example: 6
+ */
 router.get('/total-trabajadores', verificarToken, verificarRol('admin'), obtenerTotalTrabajadores);
-// GET /api/stats/altas-mensuales – Obtener el número de altas por mes en los últimos 12 meses
+
+/**
+ * @swagger
+ * /stats/altas-mensuales:
+ *   get:
+ *     summary: Altas de clientes por mes en los últimos 12 meses
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Array con el número de altas por mes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   mes:
+ *                     type: string
+ *                     example: '2026-03'
+ *                   altas:
+ *                     type: integer
+ *                     example: 4
+ */
 router.get('/altas-mensuales', verificarToken, verificarRol('admin'), obtenerStatsAltas);
 
 export default router;
