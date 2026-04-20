@@ -16,6 +16,7 @@ import administradoresRoutes from '../routes/administradoresRoutes.js';
 import medicionesRoutes from '../routes/medicionesRoutes.js';
 import pagosRoutes from '../routes/pagosRoutes.js';
 import cuotasRoutes from '../routes/cuotasRoutes.js';
+import statsRoutes from '../routes/statsRoutes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/administradores', administradoresRoutes);
 app.use('/api/mediciones', medicionesRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/cuotas', cuotasRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Comprobar el estado del servidor y de la conexión con la base de datos
 app.get('/api/health', (_req, res) => {
