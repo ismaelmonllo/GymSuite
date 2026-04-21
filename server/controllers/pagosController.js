@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Pagos from '../models/PagoModel.js';
 import Usuario from '../models/UsuarioModel.js';
+import { validarObjectId } from '../validators/validarCampos.js';
 
 // Devolver el historial de pagos de un cliente concreto para que el entrenador o admin lo consulte
 // id_usuario viene de los parámetros de la ruta; ordenado del mes más reciente al más antiguo
@@ -9,6 +10,9 @@ export const obtenerPagos = async (req, res) =>  {
     try {
 
         const { id_usuario } = req.params;
+
+        const { valido } = validarObjectId(id_usuario);
+        if (!valido) return res.status(400).json({ mensaje: 'ID de cliente no válido' });
 
         // Buscar pagos del cliente y ordenar del más reciente al más antiguo
         // Ordenar por mes (string "YYYY-MM") y no por fecha, porque fecha solo existe en pagos confirmados
@@ -135,6 +139,9 @@ export const registrarPago = async (req, res) => {
         const { grupo_pago } = req.body;
         const registrado_por = req.usuario.id;
         const fecha = new Date();
+
+        const { valido } = validarObjectId(grupo_pago);
+        if (!valido) return res.status(400).json({ mensaje: 'grupo_pago no válido' });
 
         // Verificar que el grupo_pago existe antes de actualizar
         const existe = await Pagos.findOne({ grupo_pago });

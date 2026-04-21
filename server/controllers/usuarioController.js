@@ -34,6 +34,9 @@ export const verCliente = async (req, res) => {
 
     try {
 
+        const { valido } = validarObjectId(req.params.id);
+        if (!valido) return res.status(400).json({ mensaje: 'ID no válido' });
+
         const cliente = await User.findById(req.params.id);
 
         // Devolver el cliente si existe y su rol es correcto, sino devolver 404
@@ -207,6 +210,9 @@ export const listarEmpleados = async (req, res) => {
 export const verEmpleado = async (req, res) => {
 
     try {
+
+        const { valido } = validarObjectId(req.params.id);
+        if (!valido) return res.status(400).json({ mensaje: 'ID no válido' });
 
         const empleado = await User.findById(req.params.id);
 

@@ -1,5 +1,6 @@
 import Medicion from '../models/MedicionModel.js';
 import { validarCrearMedicion, validarEditarMedicion } from '../validators/validarRegistros.js';
+import { validarObjectId } from '../validators/validarCampos.js';
 
 // Obtener historial de mediciones de un cliente, ordenadas de más reciente a más antigua
 export const obtenerMediciones = async (req, res) => {
@@ -7,7 +8,11 @@ export const obtenerMediciones = async (req, res) => {
     try {
 
         // Extraer el id del cliente de los parámetros de la ruta
-        const { id_usuario} = req.params;
+        const { id_usuario } = req.params;
+
+        // Rechazar IDs con formato inválido antes de llegar a Mongoose
+        const { valido } = validarObjectId(id_usuario);
+        if (!valido) return res.status(400).json({ mensaje: 'ID de cliente no válido' });
 
         // Buscar todas las mediciones del cliente ordenadas de más reciente a más antigua
         const mediciones = await Medicion.find({ cliente_id: id_usuario }).sort({ fecha: -1 });
@@ -54,6 +59,10 @@ export const obtenerMedicion = async (req, res) => {
 
         // Extraer el id de la medición de los parámetros de la ruta
         const { id } = req.params;
+
+        // Rechazar IDs con formato inválido antes de llegar a Mongoose
+        const { valido } = validarObjectId(id);
+        if (!valido) return res.status(400).json({ mensaje: 'ID de medición no válido' });
 
         // Buscar la medición y devolver 404 si no existe
         const medicion = await Medicion.findById(id);
