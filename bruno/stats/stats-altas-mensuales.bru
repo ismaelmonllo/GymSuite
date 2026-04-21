@@ -1,0 +1,22 @@
+meta {
+  name: Stats Altas Mensuales
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/stats/altas-mensuales
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("responde 200", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+  });
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Stats Total Clientes
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/stats/total-clientes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("responde 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

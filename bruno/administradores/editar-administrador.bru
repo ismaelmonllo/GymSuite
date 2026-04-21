@@ -1,0 +1,29 @@
+meta {
+  name: Editar Administrador
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/administradores/{{adminId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Laura",
+    "apellidos": "Sánchez Pérez",
+    "telefono": "688776655"
+  }
+}
+
+tests {
+  test("edita con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

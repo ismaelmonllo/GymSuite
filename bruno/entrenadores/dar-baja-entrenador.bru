@@ -1,0 +1,21 @@
+meta {
+  name: Dar Baja Entrenador
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/entrenadores/{{entrenadorId}}/baja
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("da de baja con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

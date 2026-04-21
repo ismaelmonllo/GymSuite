@@ -1,0 +1,22 @@
+meta {
+  name: Mediciones de un Cliente
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/mediciones/cliente/{{clienteId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("responde 200", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+  });
+}

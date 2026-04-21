@@ -1,0 +1,29 @@
+meta {
+  name: Editar Cuota
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/cuotas/{{cuotaId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Mensual Plus",
+    "meses": 1,
+    "importe": 45
+  }
+}
+
+tests {
+  test("edita con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

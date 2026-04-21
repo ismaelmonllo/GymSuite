@@ -1,0 +1,21 @@
+meta {
+  name: Generar Pagos del Mes (admin)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/pagos/generar
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("genera o confirma con 200 o 201", function() {
+    expect([200, 201]).to.include(res.status);
+  });
+}

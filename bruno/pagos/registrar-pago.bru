@@ -1,0 +1,27 @@
+meta {
+  name: Registrar Pago
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/pagos/registrar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "grupo_pago": "{{grupoPago}}"
+  }
+}
+
+tests {
+  test("registra con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

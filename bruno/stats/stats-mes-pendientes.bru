@@ -1,0 +1,21 @@
+meta {
+  name: Stats Pagos Pendientes del Mes
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/stats/mes-pendientes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("responde 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

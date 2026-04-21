@@ -1,0 +1,29 @@
+meta {
+  name: Editar Medición
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/mediciones/{{medicionId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "peso": 74.8,
+    "porcentaje_grasa": 17.5,
+    "observaciones": "Progreso positivo"
+  }
+}
+
+tests {
+  test("edita con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

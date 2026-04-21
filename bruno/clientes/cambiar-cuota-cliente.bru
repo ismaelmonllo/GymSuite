@@ -1,0 +1,27 @@
+meta {
+  name: Cambiar Cuota Cliente
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/clientes/{{clienteId}}/cuota
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "tipo_cuota": "{{cuotaId}}"
+  }
+}
+
+tests {
+  test("cambia cuota con 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}

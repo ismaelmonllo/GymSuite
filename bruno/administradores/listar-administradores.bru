@@ -1,0 +1,27 @@
+meta {
+  name: Listar Administradores
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/administradores
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  buscar:
+  activo:
+}
+
+tests {
+  test("responde 200", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+  });
+}
