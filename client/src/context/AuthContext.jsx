@@ -2,12 +2,37 @@ import { createContext, useState } from 'react'
 
 export const AuthContext = createContext(null)
 
-// Proveer usuario autenticado a toda la app
-export function AuthProvider({ children }) {
-  const [usuario, setUsuario] = useState(null)
+// Leer el token de la cookie al cargar la página
+const leerCookie = () => {
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+  return match ? match[1] : null
+}
 
-  const login = (datos) => setUsuario(datos)
-  const logout = () => setUsuario(null)
+// Decodificar payload del JWT sin verificar firma
+const decodificarToken = (token) => {
+  try {
+    return JSON.parse(atob(token.split('.')[1]))
+  } catch {
+    return null
+  }
+}
+
+const tokenInicial = leerCookie()
+const usuarioInicial = tokenInicial ? { ...decodificarToken(tokenInicial), token: tokenInicial } : null
+
+// Proveer usuario autenticado a toda la app, persistiendo el token en una cookie
+export function AuthProvider({ children }) {
+  const [usuario, setUsuario] = useState(usuarioInicial)
+
+  const login = (datos) => {
+    document.cookie = `token=${datos.token}; path=/; max-age=${2 * 60 * 60}; SameSite=Strict`
+    setUsuario(datos)
+  }
+
+  const logout = () => {
+    document.cookie = 'token=; path=/; max-age=0'
+    setUsuario(null)
+  }
 
   return (
     <AuthContext.Provider value={{ usuario, login, logout }}>
