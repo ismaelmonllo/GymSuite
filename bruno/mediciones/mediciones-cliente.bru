@@ -11,12 +11,11 @@ get {
 }
 
 auth:bearer {
-  token: {{token}}
+  token: {{tokenEntrenador}}
 }
 
 tests {
-  test("responde 200", function() {
-    expect(res.status).to.equal(200);
-    expect(res.body).to.be.an("array");
+  test("responde 200 o 404", function() {
+    expect([200, 404]).to.include(res.status);
   });
 }

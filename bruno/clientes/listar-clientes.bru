@@ -20,9 +20,14 @@ params:query {
   activo:
 }
 
+script:post-response {
+  const found = (res.body.clientes || []).find(c => c.correo === "ana.ruiz@ejemplo.com");
+  if (found) bru.setVar("clienteId", found._id);
+}
+
 tests {
   test("responde 200", function() {
     expect(res.status).to.equal(200);
-    expect(res.body).to.be.an("array");
+    expect(res.body.clientes).to.be.an("array");
   });
 }

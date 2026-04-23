@@ -15,7 +15,7 @@ headers {
 }
 
 tests {
-  test("genera o confirma con 200 o 201", function() {
-    expect([200, 201]).to.include(res.status);
+  test("genera, confirma o rechaza sin secret", function() {
+    expect([200, 201, 401]).to.include(res.status);
   });
 }

@@ -24,13 +24,13 @@ body:json {
 
 script:post-response {
   if (res.status === 201) {
-    bru.setVar("cuotaId", res.body._id);
+    bru.setVar("cuotaId", res.body.cuota._id);
   }
 }
 
 tests {
   test("crea cuota con 201", function() {
     expect(res.status).to.equal(201);
-    expect(res.body).to.have.property("_id");
+    expect(res.body.cuota).to.have.property("_id");
   });
 }

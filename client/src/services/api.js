@@ -1,9 +1,9 @@
 import axios from 'axios'
 
-// Rutas relativas — en dev el proxy de Vite redirige /api → localhost:3000
-//                 — en prod Vercel redirige /api → backend serverless
+// En dev: vacío → el proxy de Vite redirige /api → localhost:3000
+// En prod: VITE_API_URL apunta al dominio del backend en Vercel
 const api = axios.create({
-  baseURL: '',
+  baseURL: import.meta.env.VITE_API_URL ?? '',
   withCredentials: true,
 })
 

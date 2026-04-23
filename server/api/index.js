@@ -20,8 +20,11 @@ import statsRoutes from '../routes/statsRoutes.js';
 
 const app = express();
 
-// Permitir peticiones desde cualquier origen y parsear el body como JSON
-app.use(cors());
+// Permitir peticiones solo desde el frontend (variable de entorno en prod, cualquier origen en dev)
+const origenesPermitidos = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL]
+  : true;
+app.use(cors({ origin: origenesPermitidos, credentials: true }));
 app.use(express.json());
 
 // Conectar a MongoDB antes de empezar a atender peticiones
