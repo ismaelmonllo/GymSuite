@@ -1,7 +1,7 @@
 // Rutas de clientes: todas requieren autenticación y rol admin o entrenador
 import express from 'express';
 import { verificarToken, verificarRol } from '../middleware/auth.js';
-import { listarClientes, verCliente, crearCliente, editarCliente, darDeBaja, cambiarCuota } from '../controllers/usuarioController.js';
+import { listarClientes, verCliente, crearCliente, editarCliente, darDeBaja, darDeAlta, cambiarCuota } from '../controllers/usuarioController.js';
 
 const router = express.Router();
 
@@ -119,6 +119,25 @@ router.put('/:id', verificarToken, verificarRol('admin', 'entrenador'), editarCl
  *         description: Cliente no encontrado
  */
 router.patch('/:id/baja', verificarToken, verificarRol('admin', 'entrenador'), darDeBaja);
+
+/**
+ * @swagger
+ * /clientes/{id}/alta:
+ *   patch:
+ *     summary: Dar de alta a un cliente
+ *     tags: [Clientes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cliente dado de alta
+ *       404:
+ *         description: Cliente no encontrado
+ */
+router.patch('/:id/alta', verificarToken, verificarRol('admin', 'entrenador'), darDeAlta);
 
 /**
  * @swagger

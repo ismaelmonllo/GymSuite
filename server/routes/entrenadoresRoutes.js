@@ -1,7 +1,7 @@
 // Rutas de entrenadores: solo el admin puede gestionarlos
 import express from 'express';
 import { verificarToken, verificarRol, verificarRolBody, forzarRolQuery } from '../middleware/auth.js';
-import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja } from '../controllers/usuarioController.js';
+import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja, darDeAlta } from '../controllers/usuarioController.js';
 
 const router = express.Router();
 
@@ -116,5 +116,24 @@ router.put('/:id', verificarToken, verificarRol('admin'), editarEmpleado);
  *         description: Entrenador no encontrado
  */
 router.patch('/:id/baja', verificarToken, verificarRol('admin'), darDeBaja);
+
+/**
+ * @swagger
+ * /entrenadores/{id}/alta:
+ *   patch:
+ *     summary: Dar de alta a un entrenador
+ *     tags: [Entrenadores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Entrenador dado de alta
+ *       404:
+ *         description: Entrenador no encontrado
+ */
+router.patch('/:id/alta', verificarToken, verificarRol('admin'), darDeAlta);
 
 export default router;

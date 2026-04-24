@@ -125,20 +125,43 @@ export const editarCliente = async (req, res) => {
 
 }
 
-// Desactivar un usuario marcando su campo 'activo' como false (baja lógica, no se borra el registro)
+// Desactivar un usuario marcando su campo 'activo' como false
 export const darDeBaja = async (req, res) => {
 
     try {
 
-        const clienteActualizado = await User.findByIdAndUpdate(
+        const usuarioActualizado = await User.findByIdAndUpdate(
             req.params.id,
             { activo: false },
             { new: true }
         );
 
-        if (!clienteActualizado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        if (!usuarioActualizado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
 
-        return res.status(200).json({ mensaje: 'Cliente editado correctamente', cliente: clienteActualizado });
+        return res.status(200).json({ mensaje: 'Usuario dado de baja correctamente', usuario: usuarioActualizado });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
+// Reactivar un usuario marcando su campo 'activo' como true
+export const darDeAlta = async (req, res) => {
+
+    try {
+
+        const usuarioActualizado = await User.findByIdAndUpdate(
+            req.params.id,
+            { activo: true },
+            { new: true }
+        );
+
+        if (!usuarioActualizado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+        return res.status(200).json({ mensaje: 'Usuario dado de alta correctamente', usuario: usuarioActualizado });
 
     } catch (error) {
 
