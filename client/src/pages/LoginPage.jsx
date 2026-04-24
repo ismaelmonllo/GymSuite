@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
-import Header from '../components/Header'
-import CardLogin from '../components/CardLogin'
+import Header from '../components/layout/Header'
+import CardLogin from '../components/auth/CardLogin'
 import { color } from '../styles'
 
 const RUTAS_ROL = {

@@ -1,4 +1,4 @@
-import { s, color } from '../styles'
+import { s, color } from '../../styles'
 
 // Card de login con pestañas, formulario y lógica de autenticación
 function CardLogin({ tab, onCambiarTab, correo, onCorreo, contrasena, onContrasena, error, cargando, onSubmit }) {
