@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { KeyRound } from 'lucide-react'
 import ModalBase from './ModalBase'
+import ValidacionContrasena from '../ui/ValidacionContrasena'
 import api from '../../services/api'
 import { color, s } from '../../styles'
 
@@ -87,6 +88,7 @@ function ModalCambiarContrasena({ usuario, esPropio, onClose }) {
             onChange={e => { setNuevaContrasena(e.target.value); setError('') }}
             placeholder="••••••••"
           />
+          <ValidacionContrasena valor={nuevaContrasena} />
         </div>
 
         <div className={s.fieldGroup}>

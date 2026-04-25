@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { UserPen } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalCambiarContrasena from './ModalCambiarContrasena'
+import ValidacionContrasena from '../ui/ValidacionContrasena'
 import api from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import { color, s } from '../../styles'
@@ -209,6 +210,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
               onChange={e => actualizarCampo('contrasena', e.target.value)}
             />
             {errores.contrasena && <p className={`text-xs ${color.error} mt-1`}>{errores.contrasena}</p>}
+            <ValidacionContrasena valor={form.contrasena} />
           </div>
         ) : (
           <button
