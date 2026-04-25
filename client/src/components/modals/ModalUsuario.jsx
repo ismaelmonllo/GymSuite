@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { UserPen } from 'lucide-react'
 import ModalBase from './ModalBase'
+import ModalCambiarContrasena from './ModalCambiarContrasena'
 import api from '../../services/api'
+import { useAuth } from '../../hooks/useAuth'
 import { color, s } from '../../styles'
 
 // Determinar el endpoint de API según el rol
@@ -73,9 +75,11 @@ const validarForm = (form, esCrear) => {
 const hayErrores = (e) => Object.values(e).some(v => v !== '')
 
 // Modal de creación, visualización y edición de usuarios
-function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
+function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLectura = false }) {
+  const { usuario: usuarioAuth } = useAuth()
   const esCrear = !usuario
-  const [editando, setEditando]   = useState(esCrear)
+  const [editando, setEditando]           = useState(esCrear)
+  const [modalContrasena, setModalContrasena] = useState(false)
   const [form, setForm]           = useState(formInicial(usuario, rolEditable))
   const [errores, setErrores]     = useState(erroresIniciales)
   const [guardando, setGuardando] = useState(false)
@@ -151,13 +155,14 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
     : `${usuario.nombre} ${usuario.apellidos}`
 
   return (
+    <>
     <ModalBase titulo={titulo} onClose={onClose}>
 
       {/* Campos con scroll si hay muchos */}
       <div className="flex flex-col gap-4 max-h-[65vh] overflow-y-auto pr-1">
 
-        {/* Nombre + Apellidos en la misma fila */}
-        <div className="flex gap-3">
+        {/* Nombre + Apellidos: apilados en móvil, misma fila en desktop */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className={`${s.fieldGroup} flex-1`}>
             <label className={s.label}>Nombre</label>
             <input
@@ -207,7 +212,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
           </div>
         ) : (
           <button
-            onClick={() => console.log('abrir modal contraseña')}
+            onClick={() => setModalContrasena(true)}
             className={`w-full py-2 rounded-lg border ${color.borde} ${color.texto} text-sm ${color.bgHover} transition-colors`}
           >
             Cambiar contraseña
@@ -276,8 +281,8 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
           </div>
         )}
 
-        {/* Rol */}
-        <div className={s.fieldGroup}>
+        {/* Rol — solo para trabajadores */}
+        {form.rol !== 'cliente' && <div className={s.fieldGroup}>
           <label className={s.label}>Rol</label>
           <select
             className={inputClass(!(esCrear && rolEditable))}
@@ -298,7 +303,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
               </>
             )}
           </select>
-        </div>
+        </div>}
 
         {/* Nivel — solo si el rol es cliente */}
         {form.rol === 'cliente' && (
@@ -322,9 +327,11 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
 
       {/* Botones de acción */}
       {!editando ? (
-        <button className={s.btnPrimary} onClick={() => setEditando(true)}>
-          Editar
-        </button>
+        !soloLectura && (
+          <button className={s.btnPrimary} onClick={() => setEditando(true)}>
+            Editar
+          </button>
+        )
       ) : (
         <div className="flex gap-3">
           <button
@@ -370,6 +377,15 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
       )}
 
     </ModalBase>
+
+    {modalContrasena && (
+      <ModalCambiarContrasena
+        usuario={usuario}
+        esPropio={usuarioAuth?.id === usuario._id}
+        onClose={() => setModalContrasena(false)}
+      />
+    )}
+    </>
   )
 }
 

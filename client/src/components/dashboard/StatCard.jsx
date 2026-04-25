@@ -8,22 +8,22 @@ function StatCard({ icono: Icono, titulo, principal, secundario, cargando, valor
       {/* Cabecera: icono + título */}
       <div className="flex items-center gap-2">
         {Icono && <Icono size={22} className={color.textoAcento2} />}
-        <span className={`${color.textoApagado} text-base uppercase tracking-wide`}>{titulo}</span>
+        <span className={`${color.textoApagado} text-sm sm:text-base uppercase tracking-wide`}>{titulo}</span>
       </div>
 
       {/* Métricas */}
       <div className="flex items-end justify-between gap-2">
         <div className="flex flex-col">
-          <span className={`${color.textoApagado} text-sm`}>{principal.label}</span>
-          <span className={`${color.texto} ${valorCompacto ? 'text-xl' : 'text-2xl'} font-bold leading-tight`}>
+          <span className={`${color.textoApagado} text-xs sm:text-sm`}>{principal.label}</span>
+          <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
             {cargando ? '—' : (principal.valor ?? '—')}
           </span>
         </div>
 
         {secundario && (
           <div className="flex flex-col items-end">
-            <span className={`${color.textoApagado} text-sm`}>{secundario.label}</span>
-            <span className={`${color.texto} ${valorCompacto ? 'text-xl' : 'text-2xl'} font-bold leading-tight`}>
+            <span className={`${color.textoApagado} text-xs sm:text-sm`}>{secundario.label}</span>
+            <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
               {cargando ? '—' : (secundario.valor ?? '—')}
             </span>
           </div>

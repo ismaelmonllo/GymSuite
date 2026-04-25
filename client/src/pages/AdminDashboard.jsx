@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { TrendingUp, CreditCard, Users, UserPlus, User, Ban, RotateCcw, Loader2, CheckCircle, CalendarDays, Receipt } from 'lucide-react'
+import { TrendingUp, CreditCard, Users, UserPlus, User, Ban, RotateCcw, Loader2, CheckCircle, CalendarDays, Receipt, SlidersHorizontal } from 'lucide-react'
 import Header from '../components/layout/Header'
 import StatCard from '../components/dashboard/StatCard'
 import { useAuth } from '../hooks/useAuth'
@@ -88,6 +88,7 @@ function AdminDashboard() {
   const [filtroActivo, setFiltroActivo]     = useState('activos')
   const [filtroPago, setFiltroPago]         = useState('todos')
   const [ordenar, setOrdenar]               = useState('fecha_desc')
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
 
   // Estado de modales y operaciones en curso
   const [modalCuotas, setModalCuotas]                     = useState(false)
@@ -159,6 +160,7 @@ function AdminDashboard() {
         const valor = String(u[campoBusqueda] ?? '').toLowerCase()
         return valor.includes(busqueda.toLowerCase())
       })
+      .filter(u => !(vista === 'empleados' && u._id === usuario.id))
       .sort((a, b) => {
         if (ordenar === 'nombre_asc')  return a.nombre.localeCompare(b.nombre)
         if (ordenar === 'nombre_desc') return b.nombre.localeCompare(a.nombre)
@@ -188,6 +190,18 @@ function AdminDashboard() {
       setErrorBajaAlta(`No se pudo ${u.activo ? 'dar de baja' : 'dar de alta'} a ${u.nombre} ${u.apellidos}.`)
     } finally {
       setProcesando(null)
+    }
+  }
+
+  // Cargar el perfil completo del usuario autenticado y abrir su modal
+  const abrirPerfilPropio = async () => {
+    try {
+      const endpoint = usuario.rol === 'admin' ? 'administradores' : 'entrenadores'
+      const res = await api.get(`/api/${endpoint}/${usuario.id}`)
+      const datos = res.data.empleado ?? res.data
+      setModalUsuario({ usuario: datos, rolEditable: false })
+    } catch {
+      // silenciar error de carga de perfil
     }
   }
 
@@ -237,7 +251,7 @@ function AdminDashboard() {
 
   return (
     <div className={`min-h-screen ${color.bgPagina} flex flex-col`}>
-      <Header usuario={usuario} onLogout={logout}>
+      <Header usuario={usuario} onLogout={logout} onAvatarClick={abrirPerfilPropio}>
         <button
           onClick={() => setConfirmarGenerarPagos(true)}
           disabled={generandoPagos}
@@ -247,10 +261,19 @@ function AdminDashboard() {
         </button>
       </Header>
 
-      <main className="flex-1 px-6 py-8 max-w-6xl w-full mx-auto flex flex-col gap-8">
+      <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full mx-auto flex flex-col gap-6 sm:gap-8">
+
+        {/* Generar pagos: visible solo en móvil (en desktop va en el header) */}
+        <button
+          className={`sm:hidden text-sm px-4 py-2 rounded-lg border ${color.borde} ${color.textoApagado} hover:text-orange-400 transition-colors disabled:opacity-40`}
+          onClick={() => setConfirmarGenerarPagos(true)}
+          disabled={generandoPagos}
+        >
+          {generandoPagos ? 'Generando...' : 'Generar pagos'}
+        </button>
 
         {/* Cards de estadísticas + botón gestionar cuotas */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
 
           <StatCard
             icono={TrendingUp}
@@ -285,7 +308,7 @@ function AdminDashboard() {
             secundario={{ label: 'Este año', valor: stats?.altasAnio }}
           />
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 lg:col-span-1">
             <button
               className={`${s.btnPrimary} flex-1 px-4`}
               onClick={() => setModalCuotas(true)}
@@ -293,7 +316,7 @@ function AdminDashboard() {
               Gestionar cuotas
             </button>
             <button
-              className={`${s.btnPrimary} flex-1 px-4`}
+              className={`hidden sm:block ${s.btnPrimary} flex-1 px-4`}
               onClick={() => setModalUsuario({ usuario: null, rolEditable: !esClientes })}
             >
               + Añadir {esClientes ? 'cliente' : 'empleado'}
@@ -302,72 +325,232 @@ function AdminDashboard() {
 
         </div>
 
-        {/* Controles: toggle + buscador + filtros + añadir */}
-        <div className="flex gap-3 items-center">
+        {/* Controles: toggle + buscador + filtros */}
+        <div className="flex flex-col gap-3">
 
-          <button
-            className={`${s.btnPrimary} px-4 shrink-0`}
-            onClick={() => { setVista(esClientes ? 'empleados' : 'clientes'); setBusqueda(''); setFiltroActivo('activos'); setFiltroPago('todos') }}
-          >
-            Ver {esClientes ? 'empleados' : 'clientes'}
-          </button>
+          {/* Fila 1: Ver + Añadir (móvil) | Ver + buscar + campo + filtros (desktop) */}
+          <div className="flex flex-wrap gap-3 items-center">
 
-          <input
-            className={`${s.input} flex-1`}
-            placeholder="Buscar..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-          />
+            {/* Ver + Añadir en la misma fila en móvil */}
+            <div className="flex gap-3 w-full sm:w-auto sm:contents">
+              <button
+                className={`${s.btnPrimary} px-4 flex-1 sm:flex-none`}
+                onClick={() => { setVista(esClientes ? 'empleados' : 'clientes'); setBusqueda(''); setFiltroActivo('activos'); setFiltroPago('todos'); setFiltrosAbiertos(false) }}
+              >
+                Ver {esClientes ? 'empleados' : 'clientes'}
+              </button>
+              <button
+                className={`sm:hidden ${s.btnPrimary} px-4 flex-1`}
+                onClick={() => setModalUsuario({ usuario: null, rolEditable: !esClientes })}
+              >
+                + Añadir {esClientes ? 'cliente' : 'empleado'}
+              </button>
+            </div>
 
-          <select
-            className={`${s.input} shrink-0`}
-            value={campoBusqueda}
-            onChange={e => setCampoBusqueda(e.target.value)}
-          >
-            <option value="nombre">Nombre</option>
-            <option value="apellidos">Apellidos</option>
-            <option value="correo">Correo</option>
-            <option value="DNI">DNI</option>
-          </select>
+            {/* Buscador unificado: input + selector de campo */}
+            <div className={`flex items-center rounded-lg border ${color.borde} ${color.bgInput} flex-1 min-w-40 focus-within:border-orange-600 transition-colors`}>
+              <input
+                className={`flex-1 min-w-0 bg-transparent px-4 py-3 ${color.texto} placeholder-neutral-500 focus:outline-none`}
+                placeholder="Buscar..."
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+              />
+              <div className={`w-px h-5 border-l ${color.borde}`} />
+              <select
+                className={`bg-neutral-900 px-3 py-3 ${color.texto} focus:outline-none shrink-0 cursor-pointer rounded-r-lg`}
+                value={campoBusqueda}
+                onChange={e => setCampoBusqueda(e.target.value)}
+              >
+                <option value="nombre">Nombre</option>
+                <option value="apellidos">Apellidos</option>
+                <option value="correo">Correo</option>
+                <option value="DNI">DNI</option>
+              </select>
+            </div>
 
-          <select
-            className={`${s.input} shrink-0`}
-            value={filtroActivo}
-            onChange={e => setFiltroActivo(e.target.value)}
-          >
-            <option value="todos">Todos</option>
-            <option value="activos">Activos</option>
-            <option value="baja">Baja</option>
-          </select>
+            {/* Filtros adicionales: siempre visibles en desktop, toggle en móvil */}
+            <div className="hidden sm:contents">
+              <select
+                className={`${s.input} min-w-25`}
+                value={filtroActivo}
+                onChange={e => setFiltroActivo(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="activos">Activos</option>
+                <option value="baja">Baja</option>
+              </select>
 
-          {esClientes && (
-            <select
-              className={`${s.input} shrink-0`}
-              value={filtroPago}
-              onChange={e => setFiltroPago(e.target.value)}
+              {esClientes && (
+                <select
+                  className={`${s.input} min-w-30`}
+                  value={filtroPago}
+                  onChange={e => setFiltroPago(e.target.value)}
+                >
+                  <option value="todos">Pago: todos</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="pendiente">Pendiente</option>
+                </select>
+              )}
+
+              <select
+                className={`${s.input} min-w-30`}
+                value={ordenar}
+                onChange={e => setOrdenar(e.target.value)}
+              >
+                <option value="nombre_asc">Nombre A-Z</option>
+                <option value="nombre_desc">Nombre Z-A</option>
+                <option value="fecha_asc">Alta ↑</option>
+                <option value="fecha_desc">Alta ↓</option>
+              </select>
+            </div>
+
+            {/* Botón filtros: solo en móvil */}
+            <button
+              className={`sm:hidden px-3 py-3 rounded-lg border ${filtrosAbiertos ? `${color.bordeAcento} ${color.textoAcento2}` : `${color.borde} ${color.textoApagado}`} transition-colors`}
+              onClick={() => setFiltrosAbiertos(v => !v)}
             >
-              <option value="todos">Pago: todos</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="pendiente">Pendiente</option>
-            </select>
+              <SlidersHorizontal size={18} />
+            </button>
+
+          </div>
+
+          {/* Fila 2: filtros colapsables en móvil */}
+          {filtrosAbiertos && (
+            <div className="sm:hidden flex flex-col gap-3">
+              <select
+                className={`${s.input} w-full`}
+                value={filtroActivo}
+                onChange={e => setFiltroActivo(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="activos">Activos</option>
+                <option value="baja">Baja</option>
+              </select>
+
+              {esClientes && (
+                <select
+                  className={`${s.input} w-full`}
+                  value={filtroPago}
+                  onChange={e => setFiltroPago(e.target.value)}
+                >
+                  <option value="todos">Pago: todos</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="pendiente">Pendiente</option>
+                </select>
+              )}
+
+              <select
+                className={`${s.input} w-full`}
+                value={ordenar}
+                onChange={e => setOrdenar(e.target.value)}
+              >
+                <option value="nombre_asc">Nombre A-Z</option>
+                <option value="nombre_desc">Nombre Z-A</option>
+                <option value="fecha_asc">Alta ↑</option>
+                <option value="fecha_desc">Alta ↓</option>
+              </select>
+            </div>
           )}
-
-          <select
-            className={`${s.input} shrink-0`}
-            value={ordenar}
-            onChange={e => setOrdenar(e.target.value)}
-          >
-            <option value="nombre_asc">Nombre A-Z</option>
-            <option value="nombre_desc">Nombre Z-A</option>
-            <option value="fecha_asc">Alta ↑</option>
-            <option value="fecha_desc">Alta ↓</option>
-          </select>
-
 
         </div>
 
-        {/* Tabla de usuarios */}
-        <div className={`${s.card} rounded-xl overflow-hidden`}>
+        {/* Móvil: lista de cards */}
+        <div className="sm:hidden flex flex-col gap-3">
+          {cargandoTabla ? (
+            <p className={`text-center py-8 text-sm ${color.textoApagado}`}>Cargando...</p>
+          ) : listaFiltrada.length === 0 ? (
+            <p className={`text-center py-8 text-sm ${color.textoApagado}`}>No se encontraron resultados.</p>
+          ) : (
+            listaFiltrada.map(u => (
+              <div key={u._id} className={`${s.card} rounded-xl p-4 flex flex-col gap-3`}>
+
+                {/* Nombre + correo + acciones */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col min-w-0">
+                    <span className={`${color.texto} font-medium truncate`}>{u.nombre} {u.apellidos}</span>
+                    <span className={`${color.textoApagado} text-xs truncate`}>{u.correo}</span>
+                  </div>
+                  <div className="flex gap-3 items-center shrink-0">
+                    <button onClick={() => setModalUsuario({ usuario: u })}
+                      className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Ver perfil">
+                      <User size={18} />
+                    </button>
+                    {esClientes && (
+                      <button onClick={() => setModalPagos(u)}
+                        className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Ver pagos">
+                        <Receipt size={18} />
+                      </button>
+                    )}
+                    {esClientes && (
+                      <button onClick={() => setModalCambioCuota(u)}
+                        className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Cambiar cuota">
+                        <CalendarDays size={18} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setConfirmacionBajaAlta(u)}
+                      disabled={procesando === u._id}
+                      className={`transition-colors ${procesando === u._id ? 'opacity-40' : `${color.textoApagado} ${u.activo ? 'hover:text-red-400' : 'hover:text-green-400'}`}`}
+                      title={u.activo ? 'Dar de baja' : 'Dar de alta'}
+                    >
+                      {procesando === u._id
+                        ? <Loader2 size={18} className="animate-spin" />
+                        : u.activo ? <Ban size={18} /> : <RotateCcw size={18} />
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                {/* Teléfono + fecha alta */}
+                <div className={`flex gap-4 text-xs ${color.textoApagado}`}>
+                  {u.telefono && <span>{u.telefono}</span>}
+                  <span>Alta: {formatearFecha(u.fecha_alta)}</span>
+                </div>
+
+                {/* Badges */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.activo ? 'bg-green-950 text-green-400' : 'bg-neutral-700 text-neutral-400'}`}>
+                    {u.activo ? 'Activo' : 'Baja'}
+                  </span>
+                  {esClientes && u.nivel && (
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${nivelBadge[u.nivel] ?? ''}`}>
+                      {u.nivel.charAt(0).toUpperCase() + u.nivel.slice(1)}
+                    </span>
+                  )}
+                  {!esClientes && (
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.rol === 'admin' ? 'bg-neutral-700 text-neutral-400' : 'bg-orange-950 text-orange-400'}`}>
+                      {u.rol === 'admin' ? 'Admin' : 'Entrenador'}
+                    </span>
+                  )}
+                  {esClientes && ultimoPago[u._id] && (
+                    <>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${ultimoPago[u._id].pendiente ? 'bg-red-950 text-red-400' : 'bg-green-950 text-green-400'}`}>
+                        {ultimoPago[u._id].pendiente ? 'Pendiente' : 'Confirmado'}
+                      </span>
+                      {ultimoPago[u._id].pendiente && (
+                        <button
+                          onClick={() => confirmarPago(u)}
+                          disabled={confirmandoPago === u._id}
+                          className={`transition-colors ${confirmandoPago === u._id ? 'opacity-40' : `${color.textoApagado} hover:text-green-400`}`}
+                          title="Confirmar pago"
+                        >
+                          {confirmandoPago === u._id
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <CheckCircle size={16} />
+                          }
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop: tabla */}
+        <div className={`${s.card} rounded-xl overflow-hidden hidden sm:block`}>
           <table className="w-full">
             <thead>
               <tr className={`border-b ${color.bordeHeader} text-left`}>

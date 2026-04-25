@@ -78,15 +78,15 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
 
       {/* Fila de info: cuota actual + importe + estado del último pago */}
       <div className={`flex rounded-lg border ${color.borde} overflow-hidden text-sm`}>
-        <div className={`flex-1 px-4 py-3 flex flex-col gap-0.5 border-r ${color.borde}`}>
+        <div className={`flex-1 min-w-0 px-4 py-3 flex flex-col gap-0.5 border-r ${color.borde}`}>
           <span className={color.textoApagado}>Tipo cuota</span>
-          <span className={`font-medium ${color.texto}`}>{cuotaActual?.nombre ?? '—'}</span>
+          <span className={`font-medium ${color.texto} truncate`}>{cuotaActual?.nombre ?? '—'}</span>
         </div>
-        <div className={`flex-1 px-4 py-3 flex flex-col gap-0.5 border-r ${color.borde}`}>
+        <div className={`flex-1 min-w-0 px-4 py-3 flex flex-col gap-0.5 border-r ${color.borde}`}>
           <span className={color.textoApagado}>Importe</span>
           <span className={`font-medium ${color.texto}`}>{cuotaActual ? `${cuotaActual.importe} €` : '—'}</span>
         </div>
-        <div className="flex-1 px-4 py-3 flex flex-col gap-0.5">
+        <div className="flex-1 min-w-0 px-4 py-3 flex flex-col gap-0.5">
           <span className={color.textoApagado}>Estado</span>
           <span className={`font-medium ${pagos[0]?.pendiente ? 'text-red-400' : 'text-green-400'}`}>
             {estadoUltimo}
@@ -130,19 +130,25 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
               {grupo.map((pago, i) => (
                 <div
                   key={pago._id}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm ${color.bgCard} ${
+                  className={`px-4 py-3 text-sm ${color.bgCard} ${
                     i > 0 ? `border-t ${color.bordeHeader}` : ''
                   } ${i === 0 ? 'rounded-t-lg' : ''} ${i === grupo.length - 1 ? 'rounded-b-lg' : ''}`}
                 >
-                  {iconoPago(pago.pendiente)}
-                  <span className={`w-20 shrink-0 font-medium ${color.texto}`}>{pago.mes}</span>
-                  <span className={`flex-1 ${color.textoApagado}`}>{pago.tipo_cuota}</span>
-                  <span className={`shrink-0 text-xs ${pago.pendiente ? 'text-red-400' : 'text-green-400'}`}>
-                    {pago.pendiente ? 'Pendiente' : 'Confirmado'}
-                  </span>
-                  <span className={`w-16 text-right shrink-0 font-medium ${color.texto}`}>
-                    {pago.importe} €
-                  </span>
+                  {/* Línea 1: icono + mes — importe */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {iconoPago(pago.pendiente)}
+                      <span className={`font-medium ${color.texto}`}>{pago.mes}</span>
+                    </div>
+                    <span className={`shrink-0 font-medium ${color.texto}`}>{pago.importe} €</span>
+                  </div>
+                  {/* Línea 2: tipo cuota — estado */}
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <span className={`text-xs ${color.textoApagado} truncate`}>{pago.tipo_cuota}</span>
+                    <span className={`shrink-0 text-xs ${pago.pendiente ? 'text-red-400' : 'text-green-400'}`}>
+                      {pago.pendiente ? 'Pendiente' : 'Confirmado'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

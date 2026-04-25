@@ -137,37 +137,41 @@ function ModalGestionCuotas({ onClose }) {
           cuotas.map((cuota, i) => (
             <div
               key={cuota._id ?? `nueva-${i}`}
-              className={`${s.card} rounded-lg p-4 flex gap-3 items-center`}
+              className={`${s.card} rounded-lg p-3 flex flex-col gap-2`}
             >
+              {/* Fila 1: nombre */}
               <input
-                className={`${s.input} flex-1 min-w-0`}
+                className={`${s.input} w-full px-3 py-2`}
                 placeholder="Nombre"
                 value={cuota.nombre}
                 onChange={e => actualizarCampo(i, 'nombre', e.target.value)}
               />
-              <input
-                className={`${s.input} w-24 text-center`}
-                placeholder="Meses"
-                type="number"
-                min="1"
-                value={cuota.meses}
-                onChange={e => actualizarCampo(i, 'meses', e.target.value)}
-              />
-              <input
-                className={`${s.input} w-24 text-center`}
-                placeholder="€"
-                type="number"
-                min="0"
-                step="0.01"
-                value={cuota.importe}
-                onChange={e => actualizarCampo(i, 'importe', e.target.value)}
-              />
-              <button
-                onClick={() => setConfirmacionBorrar(i)}
-                className={`${color.textoApagado} hover:text-red-400 transition-colors shrink-0`}
-              >
-                <Trash2 size={18} />
-              </button>
+              {/* Fila 2: meses + importe + papelera */}
+              <div className="flex gap-2 items-center">
+                <input
+                  className={`${s.input} flex-1 min-w-0 text-center px-2 py-1.5`}
+                  placeholder="Meses"
+                  type="number"
+                  min="1"
+                  value={cuota.meses}
+                  onChange={e => actualizarCampo(i, 'meses', e.target.value)}
+                />
+                <input
+                  className={`${s.input} flex-1 min-w-0 text-center px-2 py-1.5`}
+                  placeholder="€"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cuota.importe}
+                  onChange={e => actualizarCampo(i, 'importe', e.target.value)}
+                />
+                <button
+                  onClick={() => setConfirmacionBorrar(i)}
+                  className={`${color.textoApagado} hover:text-red-400 transition-colors shrink-0 px-2`}
+                >
+                  <Trash2 size={22} />
+                </button>
+              </div>
             </div>
           ))
         )}
