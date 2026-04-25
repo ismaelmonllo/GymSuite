@@ -1,7 +1,7 @@
 import { color, s } from '../../styles'
 
 // Tarjeta de estadística con una métrica principal y una secundaria opcional
-function StatCard({ icono: Icono, titulo, principal, secundario, cargando }) {
+function StatCard({ icono: Icono, titulo, principal, secundario, cargando, valorCompacto = false }) {
   return (
     <div className={`${s.card} rounded-xl p-5 flex flex-col gap-3`}>
 
@@ -15,7 +15,7 @@ function StatCard({ icono: Icono, titulo, principal, secundario, cargando }) {
       <div className="flex items-end justify-between gap-2">
         <div className="flex flex-col">
           <span className={`${color.textoApagado} text-sm`}>{principal.label}</span>
-          <span className={`${color.texto} text-2xl font-bold leading-tight`}>
+          <span className={`${color.texto} ${valorCompacto ? 'text-xl' : 'text-2xl'} font-bold leading-tight`}>
             {cargando ? '—' : (principal.valor ?? '—')}
           </span>
         </div>
@@ -23,7 +23,7 @@ function StatCard({ icono: Icono, titulo, principal, secundario, cargando }) {
         {secundario && (
           <div className="flex flex-col items-end">
             <span className={`${color.textoApagado} text-sm`}>{secundario.label}</span>
-            <span className={`${color.texto} text-2xl font-bold leading-tight`}>
+            <span className={`${color.texto} ${valorCompacto ? 'text-xl' : 'text-2xl'} font-bold leading-tight`}>
               {cargando ? '—' : (secundario.valor ?? '—')}
             </span>
           </div>

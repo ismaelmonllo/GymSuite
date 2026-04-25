@@ -26,13 +26,59 @@ const formInicial = (usuario, rolEditable) => ({
   tipo_cuota:       usuario?.tipo_cuota?._id  ?? usuario?.tipo_cuota ?? '',
 })
 
+const erroresIniciales = {
+  nombre: '', apellidos: '', correo: '', contrasena: '',
+  DNI: '', telefono: '', fecha_nacimiento: '',
+}
+
+// Validar el formulario; devuelve objeto de errores (campos vacíos = sin error)
+const validarForm = (form, esCrear) => {
+  const e = { ...erroresIniciales }
+
+  if (!form.nombre.trim())    e.nombre    = 'El nombre es obligatorio.'
+  if (!form.apellidos.trim()) e.apellidos = 'Los apellidos son obligatorios.'
+
+  if (!form.correo.trim()) {
+    e.correo = 'El correo es obligatorio.'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) {
+    e.correo = 'Formato de correo no válido.'
+  }
+
+  if (!form.DNI.trim()) {
+    e.DNI = 'El DNI es obligatorio.'
+  } else if (!/^\d{8}[A-Za-z]$/.test(form.DNI.trim())) {
+    e.DNI = 'Formato DNI no válido (8 dígitos + letra).'
+  }
+
+  if (esCrear) {
+    if (!form.contrasena) {
+      e.contrasena = 'La contraseña es obligatoria.'
+    } else if (form.contrasena.length < 8) {
+      e.contrasena = 'Mínimo 8 caracteres.'
+    }
+  }
+
+  if (form.telefono && !/^\d{9}$/.test(form.telefono.trim())) {
+    e.telefono = 'El teléfono debe tener exactamente 9 dígitos.'
+  }
+
+  if (form.fecha_nacimiento && new Date(form.fecha_nacimiento) > new Date()) {
+    e.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura.'
+  }
+
+  return e
+}
+
+// Comprobar si hay algún error en el objeto de errores
+const hayErrores = (e) => Object.values(e).some(v => v !== '')
+
 // Modal de creación, visualización y edición de usuarios
 function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
   const esCrear = !usuario
   const [editando, setEditando]   = useState(esCrear)
   const [form, setForm]           = useState(formInicial(usuario, rolEditable))
+  const [errores, setErrores]     = useState(erroresIniciales)
   const [guardando, setGuardando] = useState(false)
-  const [error, setError]         = useState(null)
   const [resultado, setResultado] = useState(null) // { exito: bool, mensaje: string, datos: obj }
   const [cuotas, setCuotas]       = useState([])
 
@@ -42,8 +88,10 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
       .catch(() => {})
   }, [])
 
+  // Actualizar campo y limpiar su error al escribir
   const actualizarCampo = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }))
+    if (errores[campo]) setErrores(prev => ({ ...prev, [campo]: '' }))
   }
 
   // Cancelar edición: si es crear cierra el modal, si es editar restaura los valores originales
@@ -52,27 +100,20 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
       onClose()
     } else {
       setForm(formInicial(usuario))
+      setErrores(erroresIniciales)
       setEditando(false)
-      setError(null)
     }
   }
 
-  // Guardar: POST si es nuevo, PUT si ya existe
+  // Guardar: valida en local primero; solo llama a la API si todo es correcto
   const guardar = async () => {
-    setGuardando(true)
-    setError(null)
-    // Validar campos obligatorios antes de llamar a la API
-    if (!form.nombre.trim() || !form.apellidos.trim() || !form.correo.trim() || !form.DNI.trim()) {
-      setError('Nombre, apellidos, correo y DNI son obligatorios.')
-      setGuardando(false)
-      return
-    }
-    if (esCrear && !form.contrasena.trim()) {
-      setError('La contraseña es obligatoria.')
-      setGuardando(false)
+    const e = validarForm(form, esCrear)
+    if (hayErrores(e)) {
+      setErrores(e)
       return
     }
 
+    setGuardando(true)
     try {
       const endpoint = endpointPorRol(esCrear ? form.rol : usuario.rol)
       // Eliminar campos opcionales vacíos; excluir contrasena del PUT (se gestiona en su propio modal)
@@ -89,7 +130,13 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
       })
     } catch (err) {
       console.error('Error al guardar usuario:', err.response?.data ?? err.message)
-      setResultado({ exito: false, mensaje: 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.' })
+      const data = err.response?.data
+      // Si el servidor indica qué campo tiene el conflicto, mostrarlo como error de campo
+      if (data?.campo && data?.mensaje) {
+        setErrores(prev => ({ ...prev, [data.campo]: data.mensaje }))
+      } else {
+        setResultado({ exito: false, mensaje: data?.mensaje ?? 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.' })
+      }
     } finally {
       setGuardando(false)
     }
@@ -119,6 +166,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
               value={form.nombre}
               onChange={e => actualizarCampo('nombre', e.target.value)}
             />
+            {errores.nombre && <p className={`text-xs ${color.error} mt-1`}>{errores.nombre}</p>}
           </div>
           <div className={`${s.fieldGroup} flex-1`}>
             <label className={s.label}>Apellidos</label>
@@ -128,6 +176,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
               value={form.apellidos}
               onChange={e => actualizarCampo('apellidos', e.target.value)}
             />
+            {errores.apellidos && <p className={`text-xs ${color.error} mt-1`}>{errores.apellidos}</p>}
           </div>
         </div>
 
@@ -141,6 +190,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
             value={form.correo}
             onChange={e => actualizarCampo('correo', e.target.value)}
           />
+          {errores.correo && <p className={`text-xs ${color.error} mt-1`}>{errores.correo}</p>}
         </div>
 
         {/* Contraseña al crear / botón cambiar al editar */}
@@ -153,6 +203,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
               value={form.contrasena}
               onChange={e => actualizarCampo('contrasena', e.target.value)}
             />
+            {errores.contrasena && <p className={`text-xs ${color.error} mt-1`}>{errores.contrasena}</p>}
           </div>
         ) : (
           <button
@@ -184,6 +235,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
             value={form.fecha_nacimiento}
             onChange={e => actualizarCampo('fecha_nacimiento', e.target.value)}
           />
+          {errores.fecha_nacimiento && <p className={`text-xs ${color.error} mt-1`}>{errores.fecha_nacimiento}</p>}
         </div>
 
         {/* Teléfono */}
@@ -195,6 +247,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
             value={form.telefono}
             onChange={e => actualizarCampo('telefono', e.target.value)}
           />
+          {errores.telefono && <p className={`text-xs ${color.error} mt-1`}>{errores.telefono}</p>}
         </div>
 
         {/* DNI */}
@@ -206,6 +259,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
             value={form.DNI}
             onChange={e => actualizarCampo('DNI', e.target.value)}
           />
+          {errores.DNI && <p className={`text-xs ${color.error} mt-1`}>{errores.DNI}</p>}
         </div>
 
         {/* Fecha de alta — siempre deshabilitada, no aparece en modo crear */}
@@ -246,45 +300,23 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false }) {
           </select>
         </div>
 
-        {/* Nivel y tipo de cuota — solo si el rol es cliente */}
+        {/* Nivel — solo si el rol es cliente */}
         {form.rol === 'cliente' && (
-          <>
-            <div className={s.fieldGroup}>
-              <label className={s.label}>Nivel</label>
-              <select
-                className={inputClass(!editando)}
-                disabled={!editando}
-                value={form.nivel}
-                onChange={e => actualizarCampo('nivel', e.target.value)}
-              >
-                <option value="">Sin especificar</option>
-                <option value="principiante">Principiante</option>
-                <option value="intermedio">Intermedio</option>
-                <option value="avanzado">Avanzado</option>
-              </select>
-            </div>
-
-            <div className={s.fieldGroup}>
-              <label className={s.label}>Tipo de cuota</label>
-              <select
-                className={inputClass(!editando)}
-                disabled={!editando}
-                value={form.tipo_cuota}
-                onChange={e => actualizarCampo('tipo_cuota', e.target.value)}
-              >
-                <option value="">Sin asignar</option>
-                {cuotas.map(cuota => (
-                  <option key={cuota._id} value={cuota._id}>
-                    {cuota.nombre} — {cuota.meses} {cuota.meses === 1 ? 'mes' : 'meses'} — {cuota.importe} €
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
+          <div className={s.fieldGroup}>
+            <label className={s.label}>Nivel</label>
+            <select
+              className={inputClass(!editando)}
+              disabled={!editando}
+              value={form.nivel}
+              onChange={e => actualizarCampo('nivel', e.target.value)}
+            >
+              <option value="">Sin especificar</option>
+              <option value="principiante">Principiante</option>
+              <option value="intermedio">Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+            </select>
+          </div>
         )}
-
-        {/* Error de guardado */}
-        {error && <p className={`text-sm ${color.error}`}>{error}</p>}
 
       </div>
 

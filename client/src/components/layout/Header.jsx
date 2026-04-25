@@ -6,7 +6,7 @@ const iniciales = (nombre = '', apellidos = '') =>
   `${nombre[0] ?? ''}${apellidos[0] ?? ''}`.toUpperCase()
 
 // Cabecera común: avatar + info usuario a la izquierda, título centrado, logout a la derecha
-function Header({ usuario, subtitulo, onLogout }) {
+function Header({ usuario, subtitulo, onLogout, children }) {
   // Sin usuario: solo título centrado (pantalla de login)
   if (!usuario) {
     return (
@@ -39,14 +39,17 @@ function Header({ usuario, subtitulo, onLogout }) {
         GymSuite
       </span>
 
-      {/* Derecha: botón logout */}
-      <button
-        onClick={onLogout}
-        className={`${color.textoApagado} hover:text-orange-400 transition-colors`}
-        title="Cerrar sesión"
-      >
-        <LogOut size={22} />
-      </button>
+      {/* Derecha: contenido opcional + logout */}
+      <div className="flex items-center gap-3">
+        {children}
+        <button
+          onClick={onLogout}
+          className={`${color.textoApagado} hover:text-orange-400 transition-colors`}
+          title="Cerrar sesión"
+        >
+          <LogOut size={22} />
+        </button>
+      </div>
 
     </header>
   )

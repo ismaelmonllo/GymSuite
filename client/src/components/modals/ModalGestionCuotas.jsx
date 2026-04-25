@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalConfirmacion from './ModalConfirmacion'
@@ -15,6 +15,7 @@ function ModalGestionCuotas({ onClose }) {
   const [confirmacionCierre, setConfirmacionCierre]   = useState(false)
   const [confirmacionBorrar, setConfirmacionBorrar]   = useState(null) // índice de la cuota pendiente de borrar
   const [resultadoGuardado, setResultadoGuardado]     = useState(null) // { exitosas: [], fallidas: [] }
+  const listaRef = useRef(null)
 
   // Cargar cuotas al abrir el modal; guardar también una copia original para detectar cambios al guardar
   useEffect(() => {
@@ -61,9 +62,12 @@ function ModalGestionCuotas({ onClose }) {
     setCuotas(prev => prev.filter((_cuota, i) => i !== index))
   }
 
-  // Añadir card vacía al estado local
+  // Añadir card vacía al estado local y bajar el scroll para que sea visible
   const nuevaCuota = () => {
     setCuotas(prev => [...prev, { nombre: '', meses: '', importe: '' }])
+    setTimeout(() => {
+      if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight
+    }, 0)
   }
 
   // Persistir todos los cambios en la API y mostrar el resultado operación por operación
@@ -126,7 +130,7 @@ function ModalGestionCuotas({ onClose }) {
     <ModalBase titulo="Gestionar cuotas" onClose={handleClose}>
 
       {/* Lista de cards de cuotas */}
-      <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
+      <div ref={listaRef} className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
         {cargando ? (
           <p className={color.textoApagado}>Cargando...</p>
         ) : (
@@ -142,7 +146,7 @@ function ModalGestionCuotas({ onClose }) {
                 onChange={e => actualizarCampo(i, 'nombre', e.target.value)}
               />
               <input
-                className={`${s.input} w-20`}
+                className={`${s.input} w-24 text-center`}
                 placeholder="Meses"
                 type="number"
                 min="1"
@@ -150,7 +154,7 @@ function ModalGestionCuotas({ onClose }) {
                 onChange={e => actualizarCampo(i, 'meses', e.target.value)}
               />
               <input
-                className={`${s.input} w-24`}
+                className={`${s.input} w-24 text-center`}
                 placeholder="€"
                 type="number"
                 min="0"
