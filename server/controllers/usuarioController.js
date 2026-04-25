@@ -65,9 +65,9 @@ export const crearCliente = async (req, res) => {
         const { valido, errores } = validarCrearCliente(req.body);
         if (!valido) return res.status(400).json({ errores });
 
-        // Comprobar que no exista ya un usuario con el mismo DNI o correo
-        const usuarioExistente = await User.findOne({ $or: [{ DNI }, { correo }] });
-        if (usuarioExistente) return res.status(400).json({ mensaje: 'Ya existe un usuario con ese DNI o correo' });
+        // Comprobar duplicados por separado para indicar cuál campo ya existe
+        if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
+        if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Cifrar la contraseña antes de guardarla en la base de datos
         const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
@@ -108,6 +108,11 @@ export const editarCliente = async (req, res) => {
         // Validar el formato de los datos editables
         const { valido, errores } = validarEditarUsuario(datos);
         if (!valido) return res.status(400).json({ errores });
+
+        // Comprobar duplicados excluyendo el propio documento
+        const id = req.params.id;
+        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI,    _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
+        if (datos.correo && await User.findOne({ correo: datos.correo, _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Actualizar solo los campos permitidos y devolver el documento actualizado
         const clienteActualizado = await User.findByIdAndUpdate(
@@ -265,9 +270,9 @@ export const crearEmpleado = async (req, res) => {
         const { valido, errores } = validarCrearTrabajador(req.body);
         if (!valido) return res.status(400).json({ errores });
 
-        // Comprobar que no exista ya un usuario con el mismo DNI o correo
-        const usuarioExistente = await User.findOne({ $or: [{ DNI }, { correo }] });
-        if (usuarioExistente) return res.status(400).json({ mensaje: 'Ya existe un usuario con ese DNI o correo' });
+        // Comprobar duplicados por separado para indicar cuál campo ya existe
+        if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
+        if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Cifrar la contraseña antes de guardarla en la base de datos
         const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
@@ -311,6 +316,11 @@ export const editarEmpleado = async (req, res) => {
         // Validar el formato de los datos editables
         const { valido, errores } = validarEditarUsuario(datos);
         if (!valido) return res.status(400).json({ errores });
+
+        // Comprobar duplicados excluyendo el propio documento
+        const id = req.params.id;
+        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI,    _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
+        if (datos.correo && await User.findOne({ correo: datos.correo, _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Actualizar solo los campos permitidos y devolver el documento actualizado
         const empleadoActualizado = await User.findByIdAndUpdate(

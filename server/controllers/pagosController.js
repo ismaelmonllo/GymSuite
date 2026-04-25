@@ -299,3 +299,28 @@ export const obtenerStatsMesPendientes = async (req, res) => {
     }
 
 }
+
+// Devolver el último pago de cada cliente: { clienteId: { pendiente, mes } }
+export const obtenerUltimoPagoPorCliente = async (req, res) => {
+
+    try {
+
+        // Agrupar por cliente, quedarse con el pago del mes más reciente
+        const resultado = await Pagos.aggregate([
+            { $sort: { mes: -1 } },
+            { $group: { _id: '$cliente_id', pendiente: { $first: '$pendiente' }, mes: { $first: '$mes' }, grupo_pago: { $first: '$grupo_pago' }, tipo_cuota: { $first: '$tipo_cuota' } } }
+        ])
+
+        // Convertir array a mapa clienteId → { pendiente, mes, grupo_pago, tipo_cuota }
+        const mapa = {}
+        for (const r of resultado) mapa[r._id.toString()] = { pendiente: r.pendiente, mes: r.mes, grupo_pago: r.grupo_pago, tipo_cuota: r.tipo_cuota }
+
+        return res.status(200).json(mapa)
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
