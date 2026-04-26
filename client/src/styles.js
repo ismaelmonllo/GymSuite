@@ -17,14 +17,24 @@ export const color = {
   error:        'text-red-400',
 }
 
+// Clases de badge por nivel de cliente
+export const nivelBadge = {
+  principiante: 'bg-blue-950 text-blue-400',
+  intermedio:   'bg-amber-950 text-amber-400',
+  avanzado:     'bg-green-950 text-green-400',
+}
+
 // Componentes reutilizables construidos sobre los tokens
 export const s = {
-  input:       `${color.bgInput} border ${color.borde} rounded-lg px-4 py-3 ${color.texto} placeholder-neutral-500 focus:outline-none focus:border-orange-600`,
-  label:       `${color.texto} text-sm`,
-  fieldGroup:  'flex flex-col gap-1',
-  btnPrimary:  `${color.acento} ${color.acentoHover} disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors`,
-  tabBase:     'flex-1 py-3 text-sm font-medium transition-colors',
-  tabActivo:   `${color.acento} text-white`,
-  tabInactivo: `${color.bgCard} ${color.texto} ${color.bgHover}`,
-  card:        `${color.bgCard} border ${color.borde}`,
+  input:         `${color.bgInput} border ${color.borde} rounded-lg px-4 py-3 ${color.texto} placeholder-neutral-500 focus:outline-none focus:border-orange-600`,
+  label:         `${color.texto} text-sm`,
+  fieldGroup:    'flex flex-col gap-1',
+  btnPrimary:    `${color.acento} ${color.acentoHover} disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors`,
+  btnSecundario: `flex-1 py-3 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`,
+  tabBase:       'flex-1 py-3 text-sm font-medium transition-colors',
+  tabActivo:     `${color.acento} text-white`,
+  tabInactivo:   `${color.bgCard} ${color.texto} ${color.bgHover}`,
+  card:          `${color.bgCard} border ${color.borde}`,
+  modalBackdrop: 'absolute inset-0 bg-black/60',
+  modalCard:     `relative z-10 w-full max-w-sm mx-4 rounded-xl ${color.bgCard} border ${color.borde} p-6 flex flex-col gap-4`,
 }

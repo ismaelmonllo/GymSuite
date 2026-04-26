@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { UserPen } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalCambiarContrasena from './ModalCambiarContrasena'
+import ModalResultado from './ModalResultado'
 import ValidacionContrasena from '../ui/ValidacionContrasena'
+import CampoFormulario from '../ui/CampoFormulario'
 import api from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import { color, s } from '../../styles'
@@ -85,13 +87,6 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
   const [errores, setErrores]     = useState(erroresIniciales)
   const [guardando, setGuardando] = useState(false)
   const [resultado, setResultado] = useState(null) // { exito: bool, mensaje: string, datos: obj }
-  const [cuotas, setCuotas]       = useState([])
-
-  useEffect(() => {
-    api.get('/api/cuotas')
-      .then(res => setCuotas(res.data.cuotas ?? []))
-      .catch(() => {})
-  }, [])
 
   // Actualizar campo y limpiar su error al escribir
   const actualizarCampo = (campo, valor) => {
@@ -164,54 +159,25 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
 
         {/* Nombre + Apellidos: apilados en móvil, misma fila en desktop */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className={`${s.fieldGroup} flex-1`}>
-            <label className={s.label}>Nombre</label>
-            <input
-              className={inputClass(!editando)}
-              disabled={!editando}
-              value={form.nombre}
-              onChange={e => actualizarCampo('nombre', e.target.value)}
-            />
-            {errores.nombre && <p className={`text-xs ${color.error} mt-1`}>{errores.nombre}</p>}
-          </div>
-          <div className={`${s.fieldGroup} flex-1`}>
-            <label className={s.label}>Apellidos</label>
-            <input
-              className={inputClass(!editando)}
-              disabled={!editando}
-              value={form.apellidos}
-              onChange={e => actualizarCampo('apellidos', e.target.value)}
-            />
-            {errores.apellidos && <p className={`text-xs ${color.error} mt-1`}>{errores.apellidos}</p>}
-          </div>
+          <CampoFormulario label="Nombre" error={errores.nombre} className="flex-1">
+            <input className={inputClass(!editando)} disabled={!editando} value={form.nombre} onChange={e => actualizarCampo('nombre', e.target.value)} />
+          </CampoFormulario>
+          <CampoFormulario label="Apellidos" error={errores.apellidos} className="flex-1">
+            <input className={inputClass(!editando)} disabled={!editando} value={form.apellidos} onChange={e => actualizarCampo('apellidos', e.target.value)} />
+          </CampoFormulario>
         </div>
 
         {/* Correo */}
-        <div className={s.fieldGroup}>
-          <label className={s.label}>Correo</label>
-          <input
-            className={inputClass(!editando)}
-            disabled={!editando}
-            type="email"
-            value={form.correo}
-            onChange={e => actualizarCampo('correo', e.target.value)}
-          />
-          {errores.correo && <p className={`text-xs ${color.error} mt-1`}>{errores.correo}</p>}
-        </div>
+        <CampoFormulario label="Correo" error={errores.correo}>
+          <input className={inputClass(!editando)} disabled={!editando} type="email" value={form.correo} onChange={e => actualizarCampo('correo', e.target.value)} />
+        </CampoFormulario>
 
         {/* Contraseña al crear / botón cambiar al editar */}
         {esCrear ? (
-          <div className={s.fieldGroup}>
-            <label className={s.label}>Contraseña</label>
-            <input
-              className={inputClass(false)}
-              type="password"
-              value={form.contrasena}
-              onChange={e => actualizarCampo('contrasena', e.target.value)}
-            />
-            {errores.contrasena && <p className={`text-xs ${color.error} mt-1`}>{errores.contrasena}</p>}
+          <CampoFormulario label="Contraseña" error={errores.contrasena}>
+            <input className={inputClass(false)} type="password" value={form.contrasena} onChange={e => actualizarCampo('contrasena', e.target.value)} />
             <ValidacionContrasena valor={form.contrasena} />
-          </div>
+          </CampoFormulario>
         ) : (
           <button
             onClick={() => setModalContrasena(true)}
@@ -222,107 +188,62 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
         )}
 
         {/* Dirección */}
-        <div className={s.fieldGroup}>
-          <label className={s.label}>Dirección</label>
-          <input
-            className={inputClass(!editando)}
-            disabled={!editando}
-            value={form.direccion}
-            onChange={e => actualizarCampo('direccion', e.target.value)}
-          />
-        </div>
+        <CampoFormulario label="Dirección">
+          <input className={inputClass(!editando)} disabled={!editando} value={form.direccion} onChange={e => actualizarCampo('direccion', e.target.value)} />
+        </CampoFormulario>
 
         {/* Fecha de nacimiento */}
-        <div className={s.fieldGroup}>
-          <label className={s.label}>Fecha de nacimiento</label>
-          <input
-            className={inputClass(!editando)}
-            disabled={!editando}
-            type="date"
-            value={form.fecha_nacimiento}
-            onChange={e => actualizarCampo('fecha_nacimiento', e.target.value)}
-          />
-          {errores.fecha_nacimiento && <p className={`text-xs ${color.error} mt-1`}>{errores.fecha_nacimiento}</p>}
-        </div>
+        <CampoFormulario label="Fecha de nacimiento" error={errores.fecha_nacimiento}>
+          <input className={inputClass(!editando)} disabled={!editando} type="date" value={form.fecha_nacimiento} onChange={e => actualizarCampo('fecha_nacimiento', e.target.value)} />
+        </CampoFormulario>
 
         {/* Teléfono */}
-        <div className={s.fieldGroup}>
-          <label className={s.label}>Teléfono</label>
-          <input
-            className={inputClass(!editando)}
-            disabled={!editando}
-            value={form.telefono}
-            onChange={e => actualizarCampo('telefono', e.target.value)}
-          />
-          {errores.telefono && <p className={`text-xs ${color.error} mt-1`}>{errores.telefono}</p>}
-        </div>
+        <CampoFormulario label="Teléfono" error={errores.telefono}>
+          <input className={inputClass(!editando)} disabled={!editando} value={form.telefono} onChange={e => actualizarCampo('telefono', e.target.value)} />
+        </CampoFormulario>
 
         {/* DNI */}
-        <div className={s.fieldGroup}>
-          <label className={s.label}>DNI</label>
-          <input
-            className={inputClass(!editando)}
-            disabled={!editando}
-            value={form.DNI}
-            onChange={e => actualizarCampo('DNI', e.target.value)}
-          />
-          {errores.DNI && <p className={`text-xs ${color.error} mt-1`}>{errores.DNI}</p>}
-        </div>
+        <CampoFormulario label="DNI" error={errores.DNI}>
+          <input className={inputClass(!editando)} disabled={!editando} value={form.DNI} onChange={e => actualizarCampo('DNI', e.target.value)} />
+        </CampoFormulario>
 
         {/* Fecha de alta — siempre deshabilitada, no aparece en modo crear */}
         {!esCrear && (
-          <div className={s.fieldGroup}>
-            <label className={s.label}>Fecha de alta</label>
-            <input
-              className={inputClass(true)}
-              disabled
-              value={usuario.fecha_alta
-                ? new Date(usuario.fecha_alta).toLocaleDateString('es-ES')
-                : '—'}
-            />
-          </div>
+          <CampoFormulario label="Fecha de alta">
+            <input className={inputClass(true)} disabled value={usuario.fecha_alta ? new Date(usuario.fecha_alta).toLocaleDateString('es-ES') : '—'} />
+          </CampoFormulario>
         )}
 
         {/* Rol — solo para trabajadores */}
-        {form.rol !== 'cliente' && <div className={s.fieldGroup}>
-          <label className={s.label}>Rol</label>
-          <select
-            className={inputClass(!(esCrear && rolEditable))}
-            disabled={!(esCrear && rolEditable)}
-            value={form.rol}
-            onChange={e => actualizarCampo('rol', e.target.value)}
-          >
-            {rolEditable ? (
-              <>
-                <option value="entrenador">Entrenador</option>
-                <option value="admin">Administrador</option>
-              </>
-            ) : (
-              <>
-                <option value="cliente">Cliente</option>
-                <option value="entrenador">Entrenador</option>
-                <option value="admin">Administrador</option>
-              </>
-            )}
-          </select>
-        </div>}
+        {form.rol !== 'cliente' && (
+          <CampoFormulario label="Rol">
+            <select className={inputClass(!(esCrear && rolEditable))} disabled={!(esCrear && rolEditable)} value={form.rol} onChange={e => actualizarCampo('rol', e.target.value)}>
+              {rolEditable ? (
+                <>
+                  <option value="entrenador">Entrenador</option>
+                  <option value="admin">Administrador</option>
+                </>
+              ) : (
+                <>
+                  <option value="cliente">Cliente</option>
+                  <option value="entrenador">Entrenador</option>
+                  <option value="admin">Administrador</option>
+                </>
+              )}
+            </select>
+          </CampoFormulario>
+        )}
 
         {/* Nivel — solo si el rol es cliente */}
         {form.rol === 'cliente' && (
-          <div className={s.fieldGroup}>
-            <label className={s.label}>Nivel</label>
-            <select
-              className={inputClass(!editando)}
-              disabled={!editando}
-              value={form.nivel}
-              onChange={e => actualizarCampo('nivel', e.target.value)}
-            >
+          <CampoFormulario label="Nivel">
+            <select className={inputClass(!editando)} disabled={!editando} value={form.nivel} onChange={e => actualizarCampo('nivel', e.target.value)}>
               <option value="">Sin especificar</option>
               <option value="principiante">Principiante</option>
               <option value="intermedio">Intermedio</option>
               <option value="avanzado">Avanzado</option>
             </select>
-          </div>
+          </CampoFormulario>
         )}
 
       </div>
@@ -338,7 +259,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
         <div className="flex gap-3">
           <button
             onClick={cancelar}
-            className={`flex-1 py-3 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`}
+            className={s.btnSecundario}
           >
             Cancelar
           </button>
@@ -354,28 +275,18 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
 
       {/* Resultado del guardado */}
       {resultado && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" />
-          <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
-            <h3 className={`font-semibold ${color.texto}`}>Resultado</h3>
-            <p className={`text-sm ${resultado.exito ? 'text-green-400' : color.error}`}>
-              {resultado.exito ? '✓' : '✗'} {resultado.mensaje}
-            </p>
-            <button
-              onClick={() => {
-                // Si fue exitoso notificar al padre (actualiza lista y cierra modal); si no, dejar abierto para corregir
-                if (resultado.exito) {
-                  onGuardar?.(resultado.datos)
-                  if (!esCrear) setEditando(false)
-                }
-                setResultado(null)
-              }}
-              className={s.btnPrimary}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <ModalResultado
+          exito={resultado.exito}
+          mensaje={resultado.mensaje}
+          onCerrar={() => {
+            // Si fue exitoso notificar al padre (actualiza lista y cierra modal); si no, dejar abierto para corregir
+            if (resultado.exito) {
+              onGuardar?.(resultado.datos)
+              if (!esCrear) setEditando(false)
+            }
+            setResultado(null)
+          }}
+        />
       )}
 
     </ModalBase>

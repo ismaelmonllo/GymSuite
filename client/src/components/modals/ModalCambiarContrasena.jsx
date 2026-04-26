@@ -107,7 +107,7 @@ function ModalCambiarContrasena({ usuario, esPropio, onClose }) {
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className={`flex-1 py-3 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`}
+            className={s.btnSecundario}
           >
             Cancelar
           </button>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalConfirmacion from './ModalConfirmacion'
+import ModalResultado from './ModalResultado'
 import api from '../../services/api'
 import { color, s } from '../../styles'
 
@@ -212,68 +213,43 @@ function ModalGestionCuotas({ onClose }) {
 
       {/* Confirmación al intentar cerrar con cambios pendientes */}
       {confirmacionCierre && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" />
-          <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
-            <p className={`text-sm ${color.texto}`}>
-              Tienes cambios sin guardar. ¿Seguro que quieres cerrar?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmacionCierre(false)}
-                className={`flex-1 py-2 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`}
-              >
-                Seguir editando
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
-              >
-                Descartar cambios
-              </button>
-            </div>
-          </div>
-        </div>
+        <ModalConfirmacion
+          mensaje="Tienes cambios sin guardar. ¿Seguro que quieres cerrar?"
+          textoConfirmar="Descartar cambios"
+          textoCancelar="Seguir editando"
+          peligro
+          onConfirmar={onClose}
+          onCancelar={() => setConfirmacionCierre(false)}
+        />
       )}
 
       {/* Resultado del guardado: lista de operaciones exitosas y fallidas */}
       {resultadoGuardado && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" />
-          <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
-            <h3 className={`font-semibold ${color.texto}`}>Resultado</h3>
-
-            {resultadoGuardado.exitosas.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {resultadoGuardado.exitosas.map(op => (
-                  <p key={op} className="text-sm text-green-400">✓ {op}</p>
-                ))}
-              </div>
-            )}
-
-            {resultadoGuardado.fallidas.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {resultadoGuardado.fallidas.map(op => (
-                  <p key={op} className={`text-sm ${color.error}`}>✗ {op}</p>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                // Si todo fue exitoso cerrar también el modal de gestión; si no, quedarse para reintentar
-                if (resultadoGuardado.fallidas.length === 0) {
-                  onClose()
-                } else {
-                  setResultadoGuardado(null)
-                }
-              }}
-              className={s.btnPrimary}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <ModalResultado
+          onCerrar={() => {
+            // Si todo fue exitoso cerrar también el modal de gestión; si no, quedarse para reintentar
+            if (resultadoGuardado.fallidas.length === 0) {
+              onClose()
+            } else {
+              setResultadoGuardado(null)
+            }
+          }}
+        >
+          {resultadoGuardado.exitosas.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {resultadoGuardado.exitosas.map(op => (
+                <p key={op} className="text-sm text-green-400">✓ {op}</p>
+              ))}
+            </div>
+          )}
+          {resultadoGuardado.fallidas.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {resultadoGuardado.fallidas.map(op => (
+                <p key={op} className={`text-sm ${color.error}`}>✗ {op}</p>
+              ))}
+            </div>
+          )}
+        </ModalResultado>
       )}
 
     </ModalBase>

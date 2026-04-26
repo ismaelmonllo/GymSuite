@@ -1,18 +1,19 @@
 import { useEffect, useState, useMemo } from 'react'
-import { TrendingUp, CreditCard, Users, UserPlus, User, Ban, RotateCcw, Loader2, CheckCircle, CalendarDays, Receipt, SlidersHorizontal } from 'lucide-react'
+import { TrendingUp, CreditCard, Users, UserPlus } from 'lucide-react'
 import Header from '../components/layout/Header'
 import StatCard from '../components/dashboard/StatCard'
+import ListaUsuarios from '../components/dashboard/ListaUsuarios'
+import FiltrosUsuarios from '../components/dashboard/FiltrosUsuarios'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { color, s } from '../styles'
+import { formatearImporte } from '../utils'
 import ModalGestionCuotas from '../components/modals/ModalGestionCuotas'
 import ModalConfirmacion from '../components/modals/ModalConfirmacion'
 import ModalUsuario from '../components/modals/ModalUsuario'
 import ModalCambioCuota from '../components/modals/ModalCambioCuota'
 import ModalPagos from '../components/modals/ModalPagos'
 
-// Formatear importe: sin decimales si es entero, con dos si no
-const formatearImporte = (n) => `${n % 1 === 0 ? n : n.toFixed(2)} €`
 
 // Lanzar los 7 endpoints de stats en paralelo y devolver un objeto normalizado
 const fetchStats = async () => {
@@ -57,15 +58,8 @@ const fetchUsuarios = async () => {
   }
 }
 
-const formatearFecha = (fecha) =>
-  fecha ? new Date(fecha).toLocaleDateString('es-ES') : '—'
 
-// Clases de color para el badge de nivel del cliente
-const nivelBadge = {
-  principiante: 'bg-blue-950 text-blue-400',
-  intermedio:   'bg-amber-950 text-amber-400',
-  avanzado:     'bg-green-950 text-green-400',
-}
+const mesActual = new Date().toISOString().slice(0, 7)
 
 function AdminDashboard() {
   const { usuario, logout } = useAuth()
@@ -88,14 +82,13 @@ function AdminDashboard() {
   const [filtroActivo, setFiltroActivo]     = useState('activos')
   const [filtroPago, setFiltroPago]         = useState('todos')
   const [ordenar, setOrdenar]               = useState('fecha_desc')
-  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
 
   // Estado de modales y operaciones en curso
   const [modalCuotas, setModalCuotas]                     = useState(false)
   const [modalUsuario, setModalUsuario]                   = useState(null)    // null = cerrado | { usuario, rolEditable }
   const [confirmacionBajaAlta, setConfirmacionBajaAlta]   = useState(null)    // usuario pendiente de baja/alta
   const [procesando, setProcesando]                       = useState(null)    // _id del usuario en proceso de baja/alta
-  const [errorBajaAlta, setErrorBajaAlta]                 = useState(null)    // mensaje de error de baja/alta
+  const [errorOperacion, setErrorOperacion]               = useState(null)    // mensaje de error de baja/alta
   const [confirmandoPago, setConfirmandoPago]             = useState(null)    // _id del cliente cuyo pago se está confirmando
   const [confirmacionPago, setConfirmacionPago]           = useState(null)    // { usuario, pago } pendiente de confirmar
   const [cuotas, setCuotas]                               = useState([])      // lista de tipos de cuota (para mostrar importe en modal)
@@ -149,7 +142,9 @@ function AdminDashboard() {
       .filter(u => {
         if (vista !== 'clientes' || filtroPago === 'todos') return true
         const pago = ultimoPago[u._id]
-        if (!pago) return false
+        const sinPagoEsteMes = !pago || pago.mes < mesActual
+        if (filtroPago === 'no-generado') return sinPagoEsteMes
+        if (sinPagoEsteMes) return false
         if (filtroPago === 'confirmado') return !pago.pendiente
         if (filtroPago === 'pendiente')  return pago.pendiente
         return true
@@ -168,7 +163,7 @@ function AdminDashboard() {
         if (ordenar === 'fecha_desc')  return new Date(b.fecha_alta) - new Date(a.fecha_alta)
         return 0
       })
-  }, [vista, clientes, empleados, busqueda, campoBusqueda, filtroActivo, filtroPago, ordenar, ultimoPago])
+  }, [vista, clientes, empleados, busqueda, campoBusqueda, filtroActivo, filtroPago, ordenar, ultimoPago, usuario.id])
 
   const esClientes = vista === 'clientes'
 
@@ -187,7 +182,7 @@ function AdminDashboard() {
       )
       esClientes ? setClientes(actualizar) : setEmpleados(actualizar)
     } catch {
-      setErrorBajaAlta(`No se pudo ${u.activo ? 'dar de baja' : 'dar de alta'} a ${u.nombre} ${u.apellidos}.`)
+      setErrorOperacion(`No se pudo ${u.activo ? 'dar de baja' : 'dar de alta'} a ${u.nombre} ${u.apellidos}.`)
     } finally {
       setProcesando(null)
     }
@@ -201,7 +196,7 @@ function AdminDashboard() {
       const datos = res.data.empleado ?? res.data
       setModalUsuario({ usuario: datos, rolEditable: false })
     } catch {
-      // silenciar error de carga de perfil
+      setErrorOperacion('No se pudo cargar tu perfil. Inténtalo de nuevo.')
     }
   }
 
@@ -243,7 +238,7 @@ function AdminDashboard() {
         [usuario._id]: { ...prev[usuario._id], pendiente: false }
       }))
     } catch {
-      setErrorBajaAlta(`No se pudo confirmar el pago de ${usuario.nombre} ${usuario.apellidos}.`)
+      setErrorOperacion(`No se pudo confirmar el pago de ${usuario.nombre} ${usuario.apellidos}.`)
     } finally {
       setConfirmandoPago(null)
     }
@@ -326,367 +321,45 @@ function AdminDashboard() {
         </div>
 
         {/* Controles: toggle + buscador + filtros */}
-        <div className="flex flex-col gap-3">
-
-          {/* Fila 1: Ver + Añadir (móvil) | Ver + buscar + campo + filtros (desktop) */}
-          <div className="flex flex-wrap gap-3 items-center">
-
-            {/* Ver + Añadir en la misma fila en móvil */}
-            <div className="flex gap-3 w-full sm:w-auto sm:contents">
-              <button
-                className={`${s.btnPrimary} px-4 flex-1 sm:flex-none`}
-                onClick={() => { setVista(esClientes ? 'empleados' : 'clientes'); setBusqueda(''); setFiltroActivo('activos'); setFiltroPago('todos'); setFiltrosAbiertos(false) }}
-              >
-                Ver {esClientes ? 'empleados' : 'clientes'}
-              </button>
-              <button
-                className={`sm:hidden ${s.btnPrimary} px-4 flex-1`}
-                onClick={() => setModalUsuario({ usuario: null, rolEditable: !esClientes })}
-              >
-                + Añadir {esClientes ? 'cliente' : 'empleado'}
-              </button>
-            </div>
-
-            {/* Buscador unificado: input + selector de campo */}
-            <div className={`flex items-center rounded-lg border ${color.borde} ${color.bgInput} flex-1 min-w-40 focus-within:border-orange-600 transition-colors`}>
-              <input
-                className={`flex-1 min-w-0 bg-transparent px-4 py-3 ${color.texto} placeholder-neutral-500 focus:outline-none`}
-                placeholder="Buscar..."
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-              />
-              <div className={`w-px h-5 border-l ${color.borde}`} />
-              <select
-                className={`bg-neutral-900 px-3 py-3 ${color.texto} focus:outline-none shrink-0 cursor-pointer rounded-r-lg`}
-                value={campoBusqueda}
-                onChange={e => setCampoBusqueda(e.target.value)}
-              >
-                <option value="nombre">Nombre</option>
-                <option value="apellidos">Apellidos</option>
-                <option value="correo">Correo</option>
-                <option value="DNI">DNI</option>
-              </select>
-            </div>
-
-            {/* Filtros adicionales: siempre visibles en desktop, toggle en móvil */}
-            <div className="hidden sm:contents">
-              <select
-                className={`${s.input} min-w-25`}
-                value={filtroActivo}
-                onChange={e => setFiltroActivo(e.target.value)}
-              >
-                <option value="todos">Todos</option>
-                <option value="activos">Activos</option>
-                <option value="baja">Baja</option>
-              </select>
-
-              {esClientes && (
-                <select
-                  className={`${s.input} min-w-30`}
-                  value={filtroPago}
-                  onChange={e => setFiltroPago(e.target.value)}
-                >
-                  <option value="todos">Pago: todos</option>
-                  <option value="confirmado">Confirmado</option>
-                  <option value="pendiente">Pendiente</option>
-                </select>
-              )}
-
-              <select
-                className={`${s.input} min-w-30`}
-                value={ordenar}
-                onChange={e => setOrdenar(e.target.value)}
-              >
-                <option value="nombre_asc">Nombre A-Z</option>
-                <option value="nombre_desc">Nombre Z-A</option>
-                <option value="fecha_asc">Alta ↑</option>
-                <option value="fecha_desc">Alta ↓</option>
-              </select>
-            </div>
-
-            {/* Botón filtros: solo en móvil */}
+        <FiltrosUsuarios
+          busqueda={busqueda}           onBusquedaChange={setBusqueda}
+          campoBusqueda={campoBusqueda} onCampoBusquedaChange={setCampoBusqueda}
+          filtroActivo={filtroActivo}   onFiltroActivoChange={setFiltroActivo}
+          filtroPago={filtroPago}       onFiltroPagoChange={setFiltroPago}
+          mostrarFiltroPago={esClientes}
+          ordenar={ordenar}             onOrdenarChange={setOrdenar}
+        >
+          {/* Ver + Añadir en la misma fila en móvil */}
+          <div className="flex gap-3 w-full sm:w-auto sm:contents">
             <button
-              className={`sm:hidden px-3 py-3 rounded-lg border ${filtrosAbiertos ? `${color.bordeAcento} ${color.textoAcento2}` : `${color.borde} ${color.textoApagado}`} transition-colors`}
-              onClick={() => setFiltrosAbiertos(v => !v)}
+              className={`${s.btnPrimary} px-4 flex-1 sm:flex-none`}
+              onClick={() => { setVista(esClientes ? 'empleados' : 'clientes'); setBusqueda(''); setFiltroActivo('activos'); setFiltroPago('todos') }}
             >
-              <SlidersHorizontal size={18} />
+              Ver {esClientes ? 'empleados' : 'clientes'}
             </button>
-
+            <button
+              className={`sm:hidden ${s.btnPrimary} px-4 flex-1`}
+              onClick={() => setModalUsuario({ usuario: null, rolEditable: !esClientes })}
+            >
+              + Añadir {esClientes ? 'cliente' : 'empleado'}
+            </button>
           </div>
+        </FiltrosUsuarios>
 
-          {/* Fila 2: filtros colapsables en móvil */}
-          {filtrosAbiertos && (
-            <div className="sm:hidden flex flex-col gap-3">
-              <select
-                className={`${s.input} w-full`}
-                value={filtroActivo}
-                onChange={e => setFiltroActivo(e.target.value)}
-              >
-                <option value="todos">Todos</option>
-                <option value="activos">Activos</option>
-                <option value="baja">Baja</option>
-              </select>
-
-              {esClientes && (
-                <select
-                  className={`${s.input} w-full`}
-                  value={filtroPago}
-                  onChange={e => setFiltroPago(e.target.value)}
-                >
-                  <option value="todos">Pago: todos</option>
-                  <option value="confirmado">Confirmado</option>
-                  <option value="pendiente">Pendiente</option>
-                </select>
-              )}
-
-              <select
-                className={`${s.input} w-full`}
-                value={ordenar}
-                onChange={e => setOrdenar(e.target.value)}
-              >
-                <option value="nombre_asc">Nombre A-Z</option>
-                <option value="nombre_desc">Nombre Z-A</option>
-                <option value="fecha_asc">Alta ↑</option>
-                <option value="fecha_desc">Alta ↓</option>
-              </select>
-            </div>
-          )}
-
-        </div>
-
-        {/* Móvil: lista de cards */}
-        <div className="sm:hidden flex flex-col gap-3">
-          {cargandoTabla ? (
-            <p className={`text-center py-8 text-sm ${color.textoApagado}`}>Cargando...</p>
-          ) : listaFiltrada.length === 0 ? (
-            <p className={`text-center py-8 text-sm ${color.textoApagado}`}>No se encontraron resultados.</p>
-          ) : (
-            listaFiltrada.map(u => (
-              <div key={u._id} className={`${s.card} rounded-xl p-4 flex flex-col gap-3`}>
-
-                {/* Nombre + correo + acciones */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col min-w-0">
-                    <span className={`${color.texto} font-medium truncate`}>{u.nombre} {u.apellidos}</span>
-                    <span className={`${color.textoApagado} text-xs truncate`}>{u.correo}</span>
-                  </div>
-                  <div className="flex gap-3 items-center shrink-0">
-                    <button onClick={() => setModalUsuario({ usuario: u })}
-                      className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Ver perfil">
-                      <User size={18} />
-                    </button>
-                    {esClientes && (
-                      <button onClick={() => setModalPagos(u)}
-                        className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Ver pagos">
-                        <Receipt size={18} />
-                      </button>
-                    )}
-                    {esClientes && (
-                      <button onClick={() => setModalCambioCuota(u)}
-                        className={`${color.textoApagado} hover:text-orange-400 transition-colors`} title="Cambiar cuota">
-                        <CalendarDays size={18} />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setConfirmacionBajaAlta(u)}
-                      disabled={procesando === u._id}
-                      className={`transition-colors ${procesando === u._id ? 'opacity-40' : `${color.textoApagado} ${u.activo ? 'hover:text-red-400' : 'hover:text-green-400'}`}`}
-                      title={u.activo ? 'Dar de baja' : 'Dar de alta'}
-                    >
-                      {procesando === u._id
-                        ? <Loader2 size={18} className="animate-spin" />
-                        : u.activo ? <Ban size={18} /> : <RotateCcw size={18} />
-                      }
-                    </button>
-                  </div>
-                </div>
-
-                {/* Teléfono + fecha alta */}
-                <div className={`flex gap-4 text-xs ${color.textoApagado}`}>
-                  {u.telefono && <span>{u.telefono}</span>}
-                  <span>Alta: {formatearFecha(u.fecha_alta)}</span>
-                </div>
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.activo ? 'bg-green-950 text-green-400' : 'bg-neutral-700 text-neutral-400'}`}>
-                    {u.activo ? 'Activo' : 'Baja'}
-                  </span>
-                  {esClientes && u.nivel && (
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${nivelBadge[u.nivel] ?? ''}`}>
-                      {u.nivel.charAt(0).toUpperCase() + u.nivel.slice(1)}
-                    </span>
-                  )}
-                  {!esClientes && (
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.rol === 'admin' ? 'bg-neutral-700 text-neutral-400' : 'bg-orange-950 text-orange-400'}`}>
-                      {u.rol === 'admin' ? 'Admin' : 'Entrenador'}
-                    </span>
-                  )}
-                  {esClientes && ultimoPago[u._id] && (
-                    <>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${ultimoPago[u._id].pendiente ? 'bg-red-950 text-red-400' : 'bg-green-950 text-green-400'}`}>
-                        {ultimoPago[u._id].pendiente ? 'Pendiente' : 'Confirmado'}
-                      </span>
-                      {ultimoPago[u._id].pendiente && (
-                        <button
-                          onClick={() => confirmarPago(u)}
-                          disabled={confirmandoPago === u._id}
-                          className={`transition-colors ${confirmandoPago === u._id ? 'opacity-40' : `${color.textoApagado} hover:text-green-400`}`}
-                          title="Confirmar pago"
-                        >
-                          {confirmandoPago === u._id
-                            ? <Loader2 size={16} className="animate-spin" />
-                            : <CheckCircle size={16} />
-                          }
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Desktop: tabla */}
-        <div className={`${s.card} rounded-xl overflow-hidden hidden sm:block`}>
-          <table className="w-full">
-            <thead>
-              <tr className={`border-b ${color.bordeHeader} text-left`}>
-                <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Nombre</th>
-                <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Correo</th>
-                <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Teléfono</th>
-                <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Alta</th>
-                <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Estado</th>
-                {esClientes && (
-                  <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Nivel</th>
-                )}
-                {esClientes && (
-                  <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Último pago</th>
-                )}
-                {!esClientes && (
-                  <th className={`px-4 py-3 text-sm font-medium ${color.textoApagado}`}>Tipo</th>
-                )}
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {cargandoTabla ? (
-                <tr>
-                  <td colSpan={esClientes ? 8 : 7} className={`px-4 py-8 text-center text-sm ${color.textoApagado}`}>
-                    Cargando...
-                  </td>
-                </tr>
-              ) : listaFiltrada.length === 0 ? (
-                <tr>
-                  <td colSpan={esClientes ? 8 : 7} className={`px-4 py-8 text-center text-sm ${color.textoApagado}`}>
-                    No se encontraron resultados.
-                  </td>
-                </tr>
-              ) : (
-                listaFiltrada.map(u => (
-                  <tr
-                    key={u._id}
-                    className={`border-b ${color.bordeHeader} last:border-0 ${color.bgHover} transition-colors`}
-                  >
-                    <td className={`px-4 py-3 text-sm font-medium ${color.texto}`}>
-                      {u.nombre} {u.apellidos}
-                    </td>
-                    <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{u.correo}</td>
-                    <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{u.telefono ?? '—'}</td>
-                    <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{formatearFecha(u.fecha_alta)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.activo ? 'bg-green-950 text-green-400' : 'bg-neutral-700 text-neutral-400'}`}>
-                        {u.activo ? 'Activo' : 'Baja'}
-                      </span>
-                    </td>
-                    {esClientes && (
-                      <td className="px-4 py-3">
-                        {u.nivel ? (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${nivelBadge[u.nivel] ?? ''}`}>
-                            {u.nivel.charAt(0).toUpperCase() + u.nivel.slice(1)}
-                          </span>
-                        ) : '—'}
-                      </td>
-                    )}
-                    {esClientes && (
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {ultimoPago[u._id] ? (
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${ultimoPago[u._id].pendiente ? 'bg-red-950 text-red-400' : 'bg-green-950 text-green-400'}`}>
-                              {ultimoPago[u._id].pendiente ? 'Pendiente' : 'Confirmado'}
-                            </span>
-                          ) : '—'}
-                          {ultimoPago[u._id]?.pendiente && (
-                            <button
-                              onClick={() => confirmarPago(u)}
-                              disabled={confirmandoPago === u._id}
-                              className={`transition-colors ${confirmandoPago === u._id ? 'opacity-40' : `${color.textoApagado} hover:text-green-400`}`}
-                              title="Confirmar pago"
-                            >
-                              {confirmandoPago === u._id
-                                ? <Loader2 size={16} className="animate-spin" />
-                                : <CheckCircle size={16} />
-                              }
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                    {!esClientes && (
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.rol === 'admin' ? 'bg-neutral-700 text-neutral-400' : 'bg-orange-950 text-orange-400'}`}>
-                          {u.rol === 'admin' ? 'Admin' : 'Entrenador'}
-                        </span>
-                      </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <div className="flex gap-3 items-center justify-end">
-                        <button
-                          onClick={() => setModalUsuario({ usuario: u })}
-                          className={`${color.textoApagado} hover:text-orange-400 transition-colors`}
-                          title="Ver perfil"
-                        >
-                          <User size={18} />
-                        </button>
-                        {esClientes && (
-                          <button
-                            onClick={() => setModalPagos(u)}
-                            className={`${color.textoApagado} hover:text-orange-400 transition-colors`}
-                            title="Ver pagos"
-                          >
-                            <Receipt size={18} />
-                          </button>
-                        )}
-                        {esClientes && (
-                          <button
-                            onClick={() => setModalCambioCuota(u)}
-                            className={`${color.textoApagado} hover:text-orange-400 transition-colors`}
-                            title="Cambiar cuota"
-                          >
-                            <CalendarDays size={18} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setConfirmacionBajaAlta(u)}
-                          disabled={procesando === u._id}
-                          className={`transition-colors ${procesando === u._id ? 'opacity-40' : `${color.textoApagado} ${u.activo ? 'hover:text-red-400' : 'hover:text-green-400'}`}`}
-                          title={u.activo ? 'Dar de baja' : 'Dar de alta'}
-                        >
-                          {procesando === u._id
-                            ? <Loader2 size={18} className="animate-spin" />
-                            : u.activo ? <Ban size={18} /> : <RotateCcw size={18} />
-                          }
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ListaUsuarios
+          lista={listaFiltrada}
+          cargando={cargandoTabla}
+          esClientes={esClientes}
+          ultimoPago={ultimoPago}
+          mesActual={mesActual}
+          procesando={procesando}
+          confirmandoPago={confirmandoPago}
+          onVerPerfil={u => setModalUsuario({ usuario: u })}
+          onVerPagos={setModalPagos}
+          onCambiarCuota={setModalCambioCuota}
+          onBajaAlta={setConfirmacionBajaAlta}
+          onConfirmarPago={confirmarPago}
+        />
 
       </main>
 
@@ -725,13 +398,13 @@ function AdminDashboard() {
         />
       )}
 
-      {errorBajaAlta && (
+      {errorOperacion && (
         <ModalConfirmacion
-          mensaje={errorBajaAlta}
+          mensaje={errorOperacion}
           textoConfirmar="Entendido"
           soloConfirmar
-          onConfirmar={() => setErrorBajaAlta(null)}
-          onCancelar={() => setErrorBajaAlta(null)}
+          onConfirmar={() => setErrorOperacion(null)}
+          onCancelar={() => setErrorOperacion(null)}
         />
       )}
 
@@ -802,8 +475,8 @@ function AdminDashboard() {
         const cuota = cuotas.find(c => c.nombre === pago.tipo_cuota)
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" />
-            <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
+            <div className={s.modalBackdrop} />
+            <div className={s.modalCard}>
               <h3 className={`font-semibold ${color.texto}`}>Confirmar pago</h3>
               <div className={`flex flex-col gap-1 text-sm ${color.textoApagado}`}>
                 <p><span className={color.texto}>{usuario.nombre} {usuario.apellidos}</span></p>
@@ -811,10 +484,7 @@ function AdminDashboard() {
                 <p>Mes: <span className={color.texto}>{pago.mes}</span></p>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmacionPago(null)}
-                  className={`flex-1 py-2 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`}
-                >
+                <button onClick={() => setConfirmacionPago(null)} className={s.btnSecundario}>
                   Cancelar
                 </button>
                 <button onClick={ejecutarConfirmacionPago} className={`flex-1 ${s.btnPrimary}`}>

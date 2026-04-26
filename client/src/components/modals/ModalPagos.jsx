@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle, Clock } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalCambioCuota from './ModalCambioCuota'
+import ModalResultado from './ModalResultado'
 import api from '../../services/api'
 import { color, s } from '../../styles'
 
@@ -26,9 +27,10 @@ const agruparPorGrupo = (pagos) => {
 function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiada }) {
   const [pagos, setPagos]             = useState([])
   const [cargando, setCargando]       = useState(true)
-  const [registrando, setRegistrando] = useState(false)
-  const [resultado, setResultado]     = useState(null)  // { exito: bool, mensaje: string }
-  const [modalCuota, setModalCuota]   = useState(false)
+  const [registrando, setRegistrando]       = useState(false)
+  const [resultado, setResultado]           = useState(null)  // { exito: bool, mensaje: string }
+  const [modalCuota, setModalCuota]         = useState(false)
+  const [confirmando, setConfirmando]       = useState(false)
 
   // Cargar historial de pagos del cliente al abrir
   useEffect(() => {
@@ -103,7 +105,7 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
           Cambiar cuota
         </button>
         <button
-          onClick={registrarPago}
+          onClick={() => setConfirmando(true)}
           disabled={registrando || !primerPendiente}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
             primerPendiente
@@ -158,16 +160,35 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
 
       {/* Resultado de registrar pago */}
       {resultado && (
+        <ModalResultado
+          exito={resultado.exito}
+          mensaje={resultado.mensaje}
+          onCerrar={() => setResultado(null)}
+        />
+      )}
+
+      {/* Confirmación antes de registrar pago: muestra resumen del pago pendiente */}
+      {confirmando && primerPendiente && (
         <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" />
-          <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
-            <h3 className={`font-semibold ${color.texto}`}>Resultado</h3>
-            <p className={`text-sm ${resultado.exito ? 'text-green-400' : color.error}`}>
-              {resultado.exito ? '✓' : '✗'} {resultado.mensaje}
-            </p>
-            <button onClick={() => setResultado(null)} className={s.btnPrimary}>
-              Cerrar
-            </button>
+          <div className={s.modalBackdrop} onClick={() => setConfirmando(false)} />
+          <div className={s.modalCard}>
+            <h3 className={`font-semibold ${color.texto}`}>Confirmar pago</h3>
+            <div className={`flex flex-col gap-1 text-sm ${color.textoApagado}`}>
+              <p><span className={color.texto}>{cliente.nombre} {cliente.apellidos}</span></p>
+              <p>Cuota: <span className={color.texto}>{primerPendiente.tipo_cuota}{cuotaActual ? ` — ${cuotaActual.importe} €` : ''}</span></p>
+              <p>Mes: <span className={color.texto}>{primerPendiente.mes}</span></p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmando(false)} className={s.btnSecundario}>
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setConfirmando(false); registrarPago() }}
+                className={`flex-1 ${s.btnPrimary}`}
+              >
+                Confirmar pago
+              </button>
+            </div>
           </div>
         </div>
       )}

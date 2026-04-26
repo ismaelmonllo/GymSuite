@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ModalBase from './ModalBase'
+import ModalResultado from './ModalResultado'
 import api from '../../services/api'
 import { color, s } from '../../styles'
 
@@ -63,28 +64,18 @@ function ModalCambioCuota({ cliente, cuotas, onClose, onGuardar }) {
 
       {/* Resultado: si fue exitoso notifica al padre y cierra; si no, permite corregir */}
       {resultado && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" />
-          <div className={`relative z-10 w-full max-w-sm mx-4 rounded-xl ${s.card} p-6 flex flex-col gap-4`}>
-            <h3 className={`font-semibold ${color.texto}`}>Resultado</h3>
-            <p className={`text-sm ${resultado.exito ? 'text-green-400' : color.error}`}>
-              {resultado.exito ? '✓' : '✗'} {resultado.mensaje}
-            </p>
-            <button
-              onClick={() => {
-                if (resultado.exito) {
-                  onGuardar?.(resultado.datos)
-                  onClose()
-                } else {
-                  setResultado(null)
-                }
-              }}
-              className={s.btnPrimary}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <ModalResultado
+          exito={resultado.exito}
+          mensaje={resultado.mensaje}
+          onCerrar={() => {
+            if (resultado.exito) {
+              onGuardar?.(resultado.datos)
+              onClose()
+            } else {
+              setResultado(null)
+            }
+          }}
+        />
       )}
 
     </ModalBase>

@@ -13,19 +13,25 @@ function StatCard({ icono: Icono, titulo, principal, secundario, cargando, valor
 
       {/* Métricas */}
       <div className="flex items-end justify-between gap-2">
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-1">
           <span className={`${color.textoApagado} text-xs sm:text-sm`}>{principal.label}</span>
-          <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
-            {cargando ? '—' : (principal.valor ?? '—')}
-          </span>
+          {cargando
+            ? <div className="h-7 w-16 bg-neutral-700 rounded animate-pulse" />
+            : <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
+                {principal.valor ?? '—'}
+              </span>
+          }
         </div>
 
         {secundario && (
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end gap-1">
             <span className={`${color.textoApagado} text-xs sm:text-sm`}>{secundario.label}</span>
-            <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
-              {cargando ? '—' : (secundario.valor ?? '—')}
-            </span>
+            {cargando
+              ? <div className="h-7 w-16 bg-neutral-700 rounded animate-pulse" />
+              : <span className={`${color.texto} ${valorCompacto ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold leading-tight`}>
+                  {secundario.valor ?? '—'}
+                </span>
+            }
           </div>
         )}
       </div>
