@@ -39,7 +39,7 @@ function Header({ usuario, subtitulo, onLogout, onAvatarClick, children }) {
       </div>
 
       {/* Centro: título */}
-      <span className={`${color.texto} text-xl sm:text-4xl font-bold tracking-wide absolute left-1/2 -translate-x-1/2`}>
+      <span className={`${color.texto} text-2xl sm:text-4xl font-bold tracking-wide absolute left-1/2 -translate-x-1/2`}>
         GymSuite
       </span>
 

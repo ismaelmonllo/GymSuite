@@ -233,7 +233,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
         </div>
 
         {/* Fecha de nacimiento */}
-        <div className={s.fieldGroup}>
+        <div className={`${s.fieldGroup} overflow-hidden`}>
           <label className={s.label}>Fecha de nacimiento</label>
           <input
             className={inputClass(!editando)}
