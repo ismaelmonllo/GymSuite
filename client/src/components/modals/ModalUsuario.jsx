@@ -1,9 +1,7 @@
-import { useState } from 'react'
-import { UserPen } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import ModalBase from './ModalBase'
 import ModalCambiarContrasena from './ModalCambiarContrasena'
 import ModalResultado from './ModalResultado'
-import ValidacionContrasena from '../ui/ValidacionContrasena'
 import CampoFormulario from '../ui/CampoFormulario'
 import api from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -21,7 +19,6 @@ const formInicial = (usuario, rolEditable) => ({
   nombre:           usuario?.nombre           ?? '',
   apellidos:        usuario?.apellidos        ?? '',
   correo:           usuario?.correo           ?? '',
-  contrasena:       '',
   direccion:        usuario?.direccion        ?? '',
   fecha_nacimiento: usuario?.fecha_nacimiento ? usuario.fecha_nacimiento.slice(0, 10) : '',
   telefono:         usuario?.telefono         ?? '',
@@ -32,7 +29,7 @@ const formInicial = (usuario, rolEditable) => ({
 })
 
 const erroresIniciales = {
-  nombre: '', apellidos: '', correo: '', contrasena: '',
+  nombre: '', apellidos: '', correo: '',
   DNI: '', telefono: '', fecha_nacimiento: '',
 }
 
@@ -55,14 +52,6 @@ const validarForm = (form, esCrear) => {
     e.DNI = 'Formato DNI no válido (8 dígitos + letra).'
   }
 
-  if (esCrear) {
-    if (!form.contrasena) {
-      e.contrasena = 'La contraseña es obligatoria.'
-    } else if (form.contrasena.length < 8) {
-      e.contrasena = 'Mínimo 8 caracteres.'
-    }
-  }
-
   if (form.telefono && !/^\d{9}$/.test(form.telefono.trim())) {
     e.telefono = 'El teléfono debe tener exactamente 9 dígitos.'
   }
@@ -81,12 +70,21 @@ const hayErrores = (e) => Object.values(e).some(v => v !== '')
 function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLectura = false }) {
   const { usuario: usuarioAuth } = useAuth()
   const esCrear = !usuario
-  const [editando, setEditando]           = useState(esCrear)
+  const esPropio = usuarioAuth?.id === usuario?._id
+  const [editando, setEditando]               = useState(esCrear)
   const [modalContrasena, setModalContrasena] = useState(false)
+  const [confirmandoReset, setConfirmandoReset] = useState(false)
+  const [resetando, setResetando]             = useState(false)
   const [form, setForm]           = useState(formInicial(usuario, rolEditable))
   const [errores, setErrores]     = useState(erroresIniciales)
+  const [cuotas, setCuotas]       = useState([])
   const [guardando, setGuardando] = useState(false)
   const [resultado, setResultado] = useState(null) // { exito: bool, mensaje: string, datos: obj }
+
+  // Cargar las cuotas disponibles para el select de alta de cliente
+  useEffect(() => {
+    api.get('/api/cuotas').then(res => setCuotas(res.data.cuotas)).catch(() => {})
+  }, [])
 
   // Actualizar campo y limpiar su error al escribir
   const actualizarCampo = (campo, valor) => {
@@ -142,6 +140,20 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
+  // Llamar al endpoint de reset y mostrar resultado
+  const handleResetearPassword = async () => {
+    setResetando(true)
+    try {
+      await api.patch(`/api/auth/resetear-password/${usuario._id}`)
+      setConfirmandoReset(false)
+      setResultado({ exito: true, mensaje: 'Contraseña reseteada. El usuario recibirá la nueva contraseña por email.' })
+    } catch (err) {
+      setResultado({ exito: false, mensaje: err.response?.data?.mensaje ?? 'No se pudo resetear la contraseña.' })
+    } finally {
+      setResetando(false)
+    }
+  }
+
   // Clases del input según si está habilitado o no
   const inputClass = (deshabilitado) =>
     `${s.input} w-full ${deshabilitado ? 'opacity-50 cursor-not-allowed' : ''}`
@@ -172,20 +184,45 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           <input className={inputClass(!editando)} disabled={!editando} type="email" value={form.correo} onChange={e => actualizarCampo('correo', e.target.value)} />
         </CampoFormulario>
 
-        {/* Contraseña al crear / botón cambiar al editar */}
-        {esCrear ? (
-          <CampoFormulario label="Contraseña" error={errores.contrasena}>
-            <input className={inputClass(false)} type="password" value={form.contrasena} onChange={e => actualizarCampo('contrasena', e.target.value)} />
-            <ValidacionContrasena valor={form.contrasena} />
-          </CampoFormulario>
-        ) : (
+        {/* Cambiar contraseña propia / resetear como admin (no aplica en creación) */}
+        {!esCrear && (esPropio ? (
           <button
             onClick={() => setModalContrasena(true)}
             className={`w-full py-2 rounded-lg border ${color.borde} ${color.texto} text-sm ${color.bgHover} transition-colors`}
           >
             Cambiar contraseña
           </button>
-        )}
+        ) : usuarioAuth?.rol === 'admin' && (
+          confirmandoReset ? (
+            <div className={`flex flex-col gap-2 rounded-lg border ${color.borde} p-3`}>
+              <p className={`${color.textoApagado} text-sm text-center`}>
+                ¿Seguro que quieres resetear la contraseña de este usuario?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmandoReset(false)}
+                  className={s.btnSecundario}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleResetearPassword}
+                  disabled={resetando}
+                  className={`flex-1 ${s.btnPrimary}`}
+                >
+                  {resetando ? 'Reseteando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmandoReset(true)}
+              className={`w-full py-2 rounded-lg border ${color.borde} ${color.texto} text-sm ${color.bgHover} transition-colors`}
+            >
+              Resetear contraseña
+            </button>
+          )
+        ))}
 
         {/* Dirección */}
         <CampoFormulario label="Dirección">
@@ -246,6 +283,24 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           </CampoFormulario>
         )}
 
+        {/* Cuota — solo al crear un cliente; en edición se gestiona desde ModalPagos */}
+        {esCrear && form.rol === 'cliente' && (
+          <CampoFormulario label="Cuota">
+            <select
+              className={inputClass(false)}
+              value={form.tipo_cuota}
+              onChange={e => actualizarCampo('tipo_cuota', e.target.value)}
+            >
+              <option value="">Seleccionar cuota</option>
+              {cuotas.map(c => (
+                <option key={c._id} value={c._id}>
+                  {c.nombre} — {c.meses} {c.meses === 1 ? 'mes' : 'meses'} / {c.importe}€
+                </option>
+              ))}
+            </select>
+          </CampoFormulario>
+        )}
+
       </div>
 
       {/* Botones de acción */}
@@ -292,11 +347,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     </ModalBase>
 
     {modalContrasena && (
-      <ModalCambiarContrasena
-        usuario={usuario}
-        esPropio={usuarioAuth?.id === usuario._id}
-        onClose={() => setModalContrasena(false)}
-      />
+      <ModalCambiarContrasena onClose={() => setModalContrasena(false)} />
     )}
     </>
   )

@@ -2,6 +2,7 @@
 // Configura middlewares, rutas y arranca la conexión con la base de datos
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
@@ -25,6 +26,7 @@ const origenesPermitidos = process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL]
   : true;
 app.use(cors({ origin: origenesPermitidos, credentials: true }));
+app.use(cookieParser());
 app.use(express.json());
 
 // Conectar a MongoDB antes de empezar a atender peticiones
@@ -62,8 +64,8 @@ app.get('/api/docs/spec', (_req, res) => res.json(swaggerSpec));
 
 // Servir la UI de Swagger cargando assets desde CDN (compatible con Vercel serverless)
 app.get('/api/docs', (_req, res) => {
-    res.setHeader('Content-Type', 'text/html');
-    res.send(`<!DOCTYPE html>
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
 <html>
   <head>
     <title>GymSuite API Docs</title>

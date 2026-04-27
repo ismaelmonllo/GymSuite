@@ -69,7 +69,8 @@ export const validarCorreo = (correo) => {
 
 /**
  * Valida que la contraseña cumpla los requisitos mínimos de seguridad:
- * longitud mínima de 8 caracteres, al menos una letra y un número.
+ * longitud mínima de 12 caracteres, al menos una minúscula, una mayúscula,
+ * un número y un símbolo.
  * @param {string} contrasena
  * @returns {{ valido: boolean, error: string }}
  */
@@ -77,17 +78,23 @@ export const validarContrasena = (contrasena) => {
     if (!contrasena)
         return { valido: false, error: 'La contraseña no puede estar vacía' };
 
-    if (contrasena.length < 8)
-        return { valido: false, error: 'La contraseña debe tener al menos 8 caracteres' };
+    if (contrasena.length < 12)
+        return { valido: false, error: 'La contraseña debe tener al menos 12 caracteres' };
 
     if (contrasena.length > 128)
         return { valido: false, error: 'La contraseña no puede superar los 128 caracteres' };
 
-    if (!/[a-zA-Z]/.test(contrasena))
-        return { valido: false, error: 'La contraseña debe contener al menos una letra' };
+    if (!/[a-z]/.test(contrasena))
+        return { valido: false, error: 'La contraseña debe contener al menos una minúscula' };
+
+    if (!/[A-Z]/.test(contrasena))
+        return { valido: false, error: 'La contraseña debe contener al menos una mayúscula' };
 
     if (!/[0-9]/.test(contrasena))
         return { valido: false, error: 'La contraseña debe contener al menos un número' };
+
+    if (!/[^a-zA-Z0-9]/.test(contrasena))
+        return { valido: false, error: 'La contraseña debe contener al menos un símbolo' };
 
     return { valido: true, error: '' };
 };

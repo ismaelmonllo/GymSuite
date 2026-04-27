@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import Header from '../components/layout/Header'
 import CardLogin from '../components/auth/CardLogin'
+import Modal2FA from '../components/auth/Modal2FA'
 import { color } from '../styles'
 
 const RUTAS_ROL = {
@@ -25,6 +26,9 @@ function LoginPage() {
   const [contrasena, setContrasena] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [correoOTP, setCorreoOTP] = useState(null) // no null = modal 2FA visible
+  const [error2FA, setError2FA] = useState('')
+  const [cargando2FA, setCargando2FA] = useState(false)
 
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -34,35 +38,58 @@ function LoginPage() {
     setError('')
   }
 
-  // Enviar credenciales al backend, validar rol según pestaña y redirigir
+  // Decodificar token, validar rol según pestaña y guardar sesión
+  const completarLogin = (token) => {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (!rolEsValido(payload.rol, tab)) {
+      setError(
+        tab === 'cliente'
+          ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
+          : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.'
+      )
+      setCorreoOTP(null)
+      return
+    }
+    login({ ...payload, token })
+    navigate(RUTAS_ROL[payload.rol])
+  }
+
+  // Enviar credenciales al backend; abrir modal 2FA si el servidor lo requiere
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setCargando(true)
     try {
       const { data } = await api.post('/api/auth/login', { correo, contrasena })
-
-      // Decodificar el payload del JWT (no necesita verificación — el servidor ya lo firmó)
-      const payload = JSON.parse(atob(data.token.split('.')[1]))
-      const { rol } = payload
-
-      // Impedir que un trabajador entre por la pestaña de cliente y viceversa
-      if (!rolEsValido(rol, tab)) {
-        setError(
-          tab === 'cliente'
-            ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
-            : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.'
-        )
-        return
+      if (data.requiere2FA) {
+        setCorreoOTP(correo)
+      } else {
+        completarLogin(data.token)
       }
-
-      login({ ...payload, token: data.token })
-      navigate(RUTAS_ROL[rol])
     } catch (err) {
       setError(err.response?.data?.mensaje ?? 'Error al iniciar sesión')
     } finally {
       setCargando(false)
     }
+  }
+
+  // Enviar el código OTP al backend y completar el login si es correcto
+  const handleVerificar2FA = async (codigo) => {
+    setError2FA('')
+    setCargando2FA(true)
+    try {
+      const { data } = await api.post('/api/auth/verificar-2fa', { correo: correoOTP, codigo })
+      completarLogin(data.token)
+    } catch (err) {
+      setError2FA(err.response?.data?.mensaje ?? 'Código incorrecto')
+    } finally {
+      setCargando2FA(false)
+    }
+  }
+
+  const handleCerrarModal = () => {
+    setCorreoOTP(null)
+    setError2FA('')
   }
 
   return (
@@ -83,6 +110,16 @@ function LoginPage() {
           />
         </div>
       </div>
+
+      {correoOTP && (
+        <Modal2FA
+          correo={correoOTP}
+          onVerificar={handleVerificar2FA}
+          onCerrar={handleCerrarModal}
+          error={error2FA}
+          cargando={cargando2FA}
+        />
+      )}
     </div>
   )
 }

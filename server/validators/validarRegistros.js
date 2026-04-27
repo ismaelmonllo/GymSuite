@@ -42,7 +42,6 @@ export const validarCrearCliente = (datos) => {
     check(errores, 'nombre',           validarNombre(datos.nombre));
     check(errores, 'apellidos',        validarNombre(datos.apellidos));
     check(errores, 'correo',           validarCorreo(datos.correo));
-    check(errores, 'contrasena',       validarContrasena(datos.contrasena));
     check(errores, 'fecha_nacimiento', validarFechaNacimiento(datos.fecha_nacimiento));
     check(errores, 'DNI',              validarDNI(datos.DNI));
     check(errores, 'nivel',            validarNivel(datos.nivel));
@@ -71,7 +70,6 @@ export const validarCrearTrabajador = (datos) => {
     check(errores, 'nombre',           validarNombre(datos.nombre));
     check(errores, 'apellidos',        validarNombre(datos.apellidos));
     check(errores, 'correo',           validarCorreo(datos.correo));
-    check(errores, 'contrasena',       validarContrasena(datos.contrasena));
     check(errores, 'fecha_nacimiento', validarFechaNacimiento(datos.fecha_nacimiento));
     check(errores, 'DNI',              validarDNI(datos.DNI));
 
@@ -141,23 +139,6 @@ export const validarCambioContrasenaPropio = (datos) => {
 
     if (!datos.contrasenaActual || datos.contrasenaActual.trim().length === 0)
         errores.push({ campo: 'contrasenaActual', error: 'La contraseña actual no puede estar vacía' });
-
-    check(errores, 'contrasenaNueva', validarContrasena(datos.contrasenaNueva));
-
-    if (datos.contrasenaNueva !== datos.confirmacion)
-        errores.push({ campo: 'confirmacion', error: 'Las contraseñas no coinciden' });
-
-    return { valido: errores.length === 0, errores };
-};
-
-/**
- * Valida el cambio de contraseña hecho por un admin sobre otro usuario.
- * No requiere la contraseña actual.
- * @param {object} datos - { contrasenaNueva, confirmacion }
- * @returns {{ valido: boolean, errores: { campo: string, error: string }[] }}
- */
-export const validarCambioContrasenaAdmin = (datos) => {
-    const errores = [];
 
     check(errores, 'contrasenaNueva', validarContrasena(datos.contrasenaNueva));
 

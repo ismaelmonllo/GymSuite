@@ -1,9 +1,11 @@
 import { Check, X } from 'lucide-react'
 
 const requisitos = [
-  { texto: 'Mínimo 8 caracteres',   cumple: v => v.length >= 8 },
-  { texto: 'Al menos una letra',    cumple: v => /[a-zA-Z]/.test(v) },
-  { texto: 'Al menos un número',    cumple: v => /[0-9]/.test(v) },
+  { texto: 'Mínimo 12 caracteres',    cumple: v => v.length >= 12 },
+  { texto: 'Al menos una minúscula',  cumple: v => /[a-z]/.test(v) },
+  { texto: 'Al menos una mayúscula',  cumple: v => /[A-Z]/.test(v) },
+  { texto: 'Al menos un número',      cumple: v => /[0-9]/.test(v) },
+  { texto: 'Al menos un símbolo',     cumple: v => /[^a-zA-Z0-9]/.test(v) },
 ]
 
 // Indicadores de requisitos de contraseña en tiempo real; solo se muestra si hay valor

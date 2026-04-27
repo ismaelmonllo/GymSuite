@@ -3,6 +3,8 @@ import User from '../models/UsuarioModel.js';
 import Pagos from '../models/PagoModel.js';
 import { validarCrearCliente, validarCrearTrabajador, validarEditarUsuario } from '../validators/validarRegistros.js';
 import { validarObjectId } from '../validators/validarCampos.js';
+import { generarPasswordTemporal } from '../utils/passwords.js';
+import { sendMail } from '../utils/mailer.js';
 
 // Obtener todos los usuarios con rol 'cliente' de la base de datos y devolverlos en la respuesta, aplicando filtros opcionales
 export const listarClientes = async (req, res) => {
@@ -54,12 +56,12 @@ export const verCliente = async (req, res) => {
 
 }
 
-// Crear un nuevo cliente: validar datos, comprobar duplicados, cifrar contraseña y guardar
+// Crear un nuevo cliente: validar datos, comprobar duplicados, generar contraseña temporal y enviar email de bienvenida
 export const crearCliente = async (req, res) => {
 
     try {
 
-        const { nombre, apellidos, correo, contrasena, telefono, direccion, fecha_nacimiento, DNI, nivel, tipo_cuota } = req.body;
+        const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, nivel, tipo_cuota } = req.body;
 
         // Validar el formato de todos los campos antes de continuar
         const { valido, errores } = validarCrearCliente(req.body);
@@ -69,24 +71,30 @@ export const crearCliente = async (req, res) => {
         if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
         if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
-        // Cifrar la contraseña antes de guardarla en la base de datos
-        const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
+        // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
+        const passwordTemporal = generarPasswordTemporal();
+        const contrasenaCifrada = await bcrypt.hash(passwordTemporal, 10);
 
         // Crear el documento y guardarlo con rol fijo 'cliente'
         const nuevoCliente = new User({
-            nombre,
-            apellidos,
-            correo,
-            contrasena: contrasenaCifrada,
-            telefono,
-            direccion,
-            fecha_nacimiento,
-            DNI,
-            nivel,
-            tipo_cuota,
+            nombre, apellidos, correo, contrasena: contrasenaCifrada,
+            telefono, direccion, fecha_nacimiento, DNI, nivel, tipo_cuota,
             rol: 'cliente'
         });
         await nuevoCliente.save();
+
+        // Enviar email de bienvenida con la contraseña temporal
+        await sendMail({
+            to: correo,
+            subject: 'Bienvenido a GymSuite',
+            html: `
+                <p>Hola ${nombre},</p>
+                <p>Tu cuenta en GymSuite ha sido creada. Ya puedes iniciar sesión con tu correo y la siguiente contraseña temporal:</p>
+                <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
+                <p>Por seguridad, te recomendamos cambiarla desde tu perfil en cuanto inicies sesión.</p>
+            `,
+        });
+
         return res.status(201).json({ mensaje: 'Cliente creado correctamente', cliente: nuevoCliente });
 
     } catch (error) {
@@ -259,12 +267,12 @@ export const verEmpleado = async (req, res) => {
 
 }
 
-// Crear un nuevo empleado (entrenador o admin): validar datos, comprobar duplicados, cifrar contraseña y guardar
+// Crear un nuevo empleado (entrenador o admin): validar datos, comprobar duplicados, generar contraseña temporal y enviar email de bienvenida
 export const crearEmpleado = async (req, res) => {
 
     try {
 
-        const { nombre, apellidos, correo, contrasena, telefono, direccion, fecha_nacimiento, DNI, rol } = req.body;
+        const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, rol } = req.body;
 
         // Validar el formato de todos los campos antes de continuar
         const { valido, errores } = validarCrearTrabajador(req.body);
@@ -274,22 +282,29 @@ export const crearEmpleado = async (req, res) => {
         if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
         if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
-        // Cifrar la contraseña antes de guardarla en la base de datos
-        const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
+        // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
+        const passwordTemporal = generarPasswordTemporal();
+        const contrasenaCifrada = await bcrypt.hash(passwordTemporal, 10);
 
         // Crear el documento con el rol recibido (admin o entrenador)
         const nuevoEmpleado = new User({
-            nombre,
-            apellidos,
-            correo,
-            contrasena: contrasenaCifrada,
-            telefono,
-            direccion,
-            fecha_nacimiento,
-            DNI,
-            rol
+            nombre, apellidos, correo, contrasena: contrasenaCifrada,
+            telefono, direccion, fecha_nacimiento, DNI, rol
         });
         await nuevoEmpleado.save();
+
+        // Enviar email de bienvenida con la contraseña temporal
+        await sendMail({
+            to: correo,
+            subject: 'Bienvenido a GymSuite',
+            html: `
+                <p>Hola ${nombre},</p>
+                <p>Tu cuenta en GymSuite ha sido creada. Ya puedes iniciar sesión con tu correo y la siguiente contraseña temporal:</p>
+                <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
+                <p>Por seguridad, te recomendamos cambiarla desde tu perfil en cuanto inicies sesión.</p>
+            `,
+        });
+
         return res.status(201).json({ mensaje: 'Empleado creado correctamente', empleado: nuevoEmpleado });
 
     } catch (error) {
