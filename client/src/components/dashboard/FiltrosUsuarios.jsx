@@ -72,7 +72,7 @@ function FiltrosUsuarios({
         {/* Botón toggle filtros: solo en móvil */}
         <button
           className={`sm:hidden px-3 py-3 rounded-lg border ${filtrosAbiertos ? `${color.bordeAcento} ${color.textoAcento2}` : `${color.borde} ${color.textoApagado}`} transition-colors`}
-          onClick={() => setFiltrosAbiertos(v => !v)}
+          onClick={() => setFiltrosAbiertos(abierto => !abierto)}
         >
           <SlidersHorizontal size={18} />
         </button>

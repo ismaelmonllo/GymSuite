@@ -21,9 +21,9 @@ function ListaUsuarios({
 }) {
 
   // Badges + botón confirmar pago para la columna/sección de último pago
-  const renderPago = (u) => {
+  const renderPago = (usuario) => {
     if (!esClientes) return null
-    const pago = ultimoPago[u._id]
+    const pago = ultimoPago[usuario._id]
     if (pago?.mes >= mesActual) {
       return (
         <>
@@ -34,8 +34,8 @@ function ListaUsuarios({
             <IconButton
               icono={CheckCircle}
               titulo="Confirmar pago"
-              onClick={() => onConfirmarPago(u)}
-              procesando={confirmandoPago === u._id}
+              onClick={() => onConfirmarPago(usuario)}
+              procesando={confirmandoPago === usuario._id}
               colorHover="hover:text-green-400"
               size={16}
             />
@@ -47,17 +47,17 @@ function ListaUsuarios({
   }
 
   // Acciones comunes de cada fila/card
-  const renderAcciones = (u) => (
+  const renderAcciones = (usuario) => (
     <>
-      <IconButton icono={User} titulo="Ver perfil" onClick={() => onVerPerfil(u)} />
-      {esClientes && <IconButton icono={Receipt} titulo="Ver pagos" onClick={() => onVerPagos(u)} />}
-      {esClientes && <IconButton icono={CalendarDays} titulo="Cambiar cuota" onClick={() => onCambiarCuota(u)} />}
+      <IconButton icono={User} titulo="Ver perfil" onClick={() => onVerPerfil(usuario)} />
+      {esClientes && <IconButton icono={Receipt} titulo="Ver pagos" onClick={() => onVerPagos(usuario)} />}
+      {esClientes && <IconButton icono={CalendarDays} titulo="Cambiar cuota" onClick={() => onCambiarCuota(usuario)} />}
       <IconButton
-        icono={u.activo ? Ban : RotateCcw}
-        titulo={u.activo ? 'Dar de baja' : 'Dar de alta'}
-        onClick={() => onBajaAlta(u)}
-        procesando={procesando === u._id}
-        colorHover={u.activo ? 'hover:text-red-400' : 'hover:text-green-400'}
+        icono={usuario.activo ? Ban : RotateCcw}
+        titulo={usuario.activo ? 'Dar de baja' : 'Dar de alta'}
+        onClick={() => onBajaAlta(usuario)}
+        procesando={procesando === usuario._id}
+        colorHover={usuario.activo ? 'hover:text-red-400' : 'hover:text-green-400'}
       />
     </>
   )
@@ -72,38 +72,38 @@ function ListaUsuarios({
     <>
       {/* Móvil: lista de cards */}
       <div className="sm:hidden flex flex-col gap-3">
-        {cargando || lista.length === 0 ? mensajeVacio : lista.map(u => (
-          <div key={u._id} className={`${s.card} rounded-xl p-4 flex flex-col gap-3`}>
+        {cargando || lista.length === 0 ? mensajeVacio : lista.map(usuario => (
+          <div key={usuario._id} className={`${s.card} rounded-xl p-4 flex flex-col gap-3`}>
 
             {/* Nombre + correo + acciones */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className={`${color.texto} font-medium truncate`}>{u.nombre} {u.apellidos}</span>
-                <span className={`${color.textoApagado} text-xs truncate`}>{u.correo}</span>
+                <span className={`${color.texto} font-medium truncate`}>{usuario.nombre} {usuario.apellidos}</span>
+                <span className={`${color.textoApagado} text-xs truncate`}>{usuario.correo}</span>
               </div>
               <div className="flex gap-3 items-center shrink-0">
-                {renderAcciones(u)}
+                {renderAcciones(usuario)}
               </div>
             </div>
 
             {/* Teléfono + fecha alta */}
             <div className={`flex gap-4 text-xs ${color.textoApagado}`}>
-              {u.telefono && <span>{u.telefono}</span>}
-              <span>Alta: {formatearFecha(u.fecha_alta)}</span>
+              {usuario.telefono && <span>{usuario.telefono}</span>}
+              <span>Alta: {formatearFecha(usuario.fecha_alta)}</span>
             </div>
 
             {/* Badges */}
             <div className="flex flex-wrap gap-2 items-center">
-              <Badge variante={u.activo ? 'activo' : 'baja'}>{u.activo ? 'Activo' : 'Baja'}</Badge>
-              {esClientes && u.nivel && (
-                <Badge variante={u.nivel}>{u.nivel.charAt(0).toUpperCase() + u.nivel.slice(1)}</Badge>
+              <Badge variante={usuario.activo ? 'activo' : 'baja'}>{usuario.activo ? 'Activo' : 'Baja'}</Badge>
+              {esClientes && usuario.nivel && (
+                <Badge variante={usuario.nivel}>{usuario.nivel.charAt(0).toUpperCase() + usuario.nivel.slice(1)}</Badge>
               )}
               {!esClientes && (
-                <Badge variante={u.rol === 'admin' ? 'admin' : 'entrenador'}>
-                  {u.rol === 'admin' ? 'Admin' : 'Entrenador'}
+                <Badge variante={usuario.rol === 'admin' ? 'admin' : 'entrenador'}>
+                  {usuario.rol === 'admin' ? 'Admin' : 'Entrenador'}
                 </Badge>
               )}
-              {esClientes && <div className="flex items-center gap-2">{renderPago(u)}</div>}
+              {esClientes && <div className="flex items-center gap-2">{renderPago(usuario)}</div>}
             </div>
 
           </div>
@@ -139,36 +139,36 @@ function ListaUsuarios({
                   No se encontraron resultados.
                 </td>
               </tr>
-            ) : lista.map(u => (
-              <tr key={u._id} className={`border-b ${color.bordeHeader} last:border-0 ${color.bgHover} transition-colors`}>
-                <td className={`px-4 py-3 text-sm font-medium ${color.texto}`}>{u.nombre} {u.apellidos}</td>
-                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{u.correo}</td>
-                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{u.telefono ?? '—'}</td>
-                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{formatearFecha(u.fecha_alta)}</td>
+            ) : lista.map(usuario => (
+              <tr key={usuario._id} className={`border-b ${color.bordeHeader} last:border-0 ${color.bgHover} transition-colors`}>
+                <td className={`px-4 py-3 text-sm font-medium ${color.texto}`}>{usuario.nombre} {usuario.apellidos}</td>
+                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{usuario.correo}</td>
+                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{usuario.telefono ?? '—'}</td>
+                <td className={`px-4 py-3 text-sm ${color.textoApagado}`}>{formatearFecha(usuario.fecha_alta)}</td>
                 <td className="px-4 py-3">
-                  <Badge variante={u.activo ? 'activo' : 'baja'}>{u.activo ? 'Activo' : 'Baja'}</Badge>
+                  <Badge variante={usuario.activo ? 'activo' : 'baja'}>{usuario.activo ? 'Activo' : 'Baja'}</Badge>
                 </td>
                 {esClientes && (
                   <td className="px-4 py-3">
-                    {u.nivel
-                      ? <Badge variante={u.nivel}>{u.nivel.charAt(0).toUpperCase() + u.nivel.slice(1)}</Badge>
+                    {usuario.nivel
+                      ? <Badge variante={usuario.nivel}>{usuario.nivel.charAt(0).toUpperCase() + usuario.nivel.slice(1)}</Badge>
                       : '—'}
                   </td>
                 )}
                 {esClientes && (
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">{renderPago(u)}</div>
+                    <div className="flex items-center gap-2">{renderPago(usuario)}</div>
                   </td>
                 )}
                 {!esClientes && (
                   <td className="px-4 py-3">
-                    <Badge variante={u.rol === 'admin' ? 'admin' : 'entrenador'}>
-                      {u.rol === 'admin' ? 'Admin' : 'Entrenador'}
+                    <Badge variante={usuario.rol === 'admin' ? 'admin' : 'entrenador'}>
+                      {usuario.rol === 'admin' ? 'Admin' : 'Entrenador'}
                     </Badge>
                   </td>
                 )}
                 <td className="px-4 py-3">
-                  <div className="flex gap-3 items-center justify-end">{renderAcciones(u)}</div>
+                  <div className="flex gap-3 items-center justify-end">{renderAcciones(usuario)}</div>
                 </td>
               </tr>
             ))}

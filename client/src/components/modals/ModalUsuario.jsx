@@ -14,7 +14,10 @@ const endpointPorRol = (rol) => {
   return 'clientes'
 }
 
-// Construir el estado inicial del formulario a partir del usuario (o vacío si es crear)
+// Construir el estado inicial del formulario a partir del usuario (o vacío si es crear).
+// fecha_nacimiento se recorta a YYYY-MM-DD porque el backend devuelve ISO 8601 completo
+// y el input type="date" solo acepta ese formato corto.
+// rol: si no hay usuario, el valor por defecto depende de si el rol es editable (trabajador) o no (cliente)
 const formInicial = (usuario, rolEditable) => ({
   nombre:           usuario?.nombre           ?? '',
   apellidos:        usuario?.apellidos        ?? '',
@@ -34,7 +37,7 @@ const erroresIniciales = {
 }
 
 // Validar el formulario; devuelve objeto de errores (campos vacíos = sin error)
-const validarForm = (form, esCrear) => {
+const validarForm = (form) => {
   const e = { ...erroresIniciales }
 
   if (!form.nombre.trim())    e.nombre    = 'El nombre es obligatorio.'
@@ -52,10 +55,12 @@ const validarForm = (form, esCrear) => {
     e.DNI = 'Formato DNI no válido (8 dígitos + letra).'
   }
 
+  // Teléfono es opcional, pero si se rellena debe tener exactamente 9 dígitos
   if (form.telefono && !/^\d{9}$/.test(form.telefono.trim())) {
     e.telefono = 'El teléfono debe tener exactamente 9 dígitos.'
   }
 
+  // Fecha de nacimiento es opcional, pero no puede ser futura
   if (form.fecha_nacimiento && new Date(form.fecha_nacimiento) > new Date()) {
     e.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura.'
   }
@@ -64,22 +69,28 @@ const validarForm = (form, esCrear) => {
 }
 
 // Comprobar si hay algún error en el objeto de errores
-const hayErrores = (e) => Object.values(e).some(v => v !== '')
+const hayErrores = (errores) => Object.values(errores).some(valor => valor !== '')
 
-// Modal de creación, visualización y edición de usuarios
+// Modal de creación, visualización y edición de usuarios.
+// - esCrear: no se pasa usuario → formulario en blanco, modo edición activo desde el inicio
+// - soloLectura: muestra los datos sin botón de editar (usado cuando el cliente ve su propio perfil)
+// - rolEditable: permite cambiar el rol al crear un empleado (solo admin)
 function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLectura = false }) {
   const { usuario: usuarioAuth } = useAuth()
   const esCrear = !usuario
+  // Detectar si el usuario que tiene el modal abierto es el mismo que el que se está visualizando
   const esPropio = usuarioAuth?.id === usuario?._id
   const [editando, setEditando]               = useState(esCrear)
   const [modalContrasena, setModalContrasena] = useState(false)
+  // confirmandoReset controla si se muestra el bloque de confirmación inline antes de resetear
   const [confirmandoReset, setConfirmandoReset] = useState(false)
   const [resetando, setResetando]             = useState(false)
   const [form, setForm]           = useState(formInicial(usuario, rolEditable))
   const [errores, setErrores]     = useState(erroresIniciales)
   const [cuotas, setCuotas]       = useState([])
   const [guardando, setGuardando] = useState(false)
-  const [resultado, setResultado] = useState(null) // { exito: bool, mensaje: string, datos: obj }
+  // resultado: { exito: bool, mensaje: string, datos: obj } — abre ModalResultado cuando no es null
+  const [resultado, setResultado] = useState(null)
 
   // Cargar las cuotas disponibles para el select de alta de cliente
   useEffect(() => {
@@ -103,9 +114,11 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
-  // Guardar: valida en local primero; solo llama a la API si todo es correcto
+  // Guardar: valida en local primero; solo llama a la API si todo es correcto.
+  // Filtra campos vacíos para no sobreescribir datos opcionales con string vacío.
+  // Excluye contrasena del PUT — se gestiona en su propio modal.
   const guardar = async () => {
-    const e = validarForm(form, esCrear)
+    const e = validarForm(form)
     if (hayErrores(e)) {
       setErrores(e)
       return
@@ -114,7 +127,6 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     setGuardando(true)
     try {
       const endpoint = endpointPorRol(esCrear ? form.rol : usuario.rol)
-      // Eliminar campos opcionales vacíos; excluir contrasena del PUT (se gestiona en su propio modal)
       const body = Object.fromEntries(
         Object.entries(form).filter(([k, v]) => v !== '' && (esCrear || k !== 'contrasena'))
       )
@@ -129,7 +141,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     } catch (err) {
       console.error('Error al guardar usuario:', err.response?.data ?? err.message)
       const data = err.response?.data
-      // Si el servidor indica qué campo tiene el conflicto, mostrarlo como error de campo
+      // Si el servidor indica qué campo tiene el conflicto (correo/DNI duplicado), mostrarlo como error de campo
       if (data?.campo && data?.mensaje) {
         setErrores(prev => ({ ...prev, [data.campo]: data.mensaje }))
       } else {
@@ -140,7 +152,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
-  // Llamar al endpoint de reset y mostrar resultado
+  // Resetear la contraseña del usuario: el backend genera una temporal y la manda por email
   const handleResetearPassword = async () => {
     setResetando(true)
     try {
@@ -184,7 +196,9 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           <input className={inputClass(!editando)} disabled={!editando} type="email" value={form.correo} onChange={e => actualizarCampo('correo', e.target.value)} />
         </CampoFormulario>
 
-        {/* Cambiar contraseña propia / resetear como admin (no aplica en creación) */}
+        {/* Cambiar contraseña propia / resetear como admin (no aplica en creación).
+            El usuario propio ve "Cambiar contraseña" que abre su modal dedicado.
+            El admin viendo a otro usuario ve "Resetear contraseña" con confirmación inline. */}
         {!esCrear && (esPropio ? (
           <button
             onClick={() => setModalContrasena(true)}
@@ -251,7 +265,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           </CampoFormulario>
         )}
 
-        {/* Rol — solo para trabajadores */}
+        {/* Rol — solo para trabajadores; solo editable al crear con rolEditable activo */}
         {form.rol !== 'cliente' && (
           <CampoFormulario label="Rol">
             <select className={inputClass(!(esCrear && rolEditable))} disabled={!(esCrear && rolEditable)} value={form.rol} onChange={e => actualizarCampo('rol', e.target.value)}>
@@ -271,7 +285,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           </CampoFormulario>
         )}
 
-        {/* Nivel — solo si el rol es cliente */}
+        {/* Nivel de entrenamiento — solo si el rol es cliente */}
         {form.rol === 'cliente' && (
           <CampoFormulario label="Nivel">
             <select className={inputClass(!editando)} disabled={!editando} value={form.nivel} onChange={e => actualizarCampo('nivel', e.target.value)}>
@@ -292,9 +306,9 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
               onChange={e => actualizarCampo('tipo_cuota', e.target.value)}
             >
               <option value="">Seleccionar cuota</option>
-              {cuotas.map(c => (
-                <option key={c._id} value={c._id}>
-                  {c.nombre} — {c.meses} {c.meses === 1 ? 'mes' : 'meses'} / {c.importe}€
+              {cuotas.map(cuota => (
+                <option key={cuota._id} value={cuota._id}>
+                  {cuota.nombre} — {cuota.meses} {cuota.meses === 1 ? 'mes' : 'meses'} / {cuota.importe}€
                 </option>
               ))}
             </select>
@@ -303,7 +317,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
 
       </div>
 
-      {/* Botones de acción */}
+      {/* Botones de acción: en modo lectura solo "Editar"; en modo edición "Cancelar" + "Guardar" */}
       {!editando ? (
         !soloLectura && (
           <button className={s.btnPrimary} onClick={() => setEditando(true)}>
@@ -328,13 +342,12 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
         </div>
       )}
 
-      {/* Resultado del guardado */}
+      {/* Modal de resultado: si fue exitoso notifica al padre y cierra la edición; si no, deja el modal abierto para corregir */}
       {resultado && (
         <ModalResultado
           exito={resultado.exito}
           mensaje={resultado.mensaje}
           onCerrar={() => {
-            // Si fue exitoso notificar al padre (actualiza lista y cierra modal); si no, dejar abierto para corregir
             if (resultado.exito) {
               onGuardar?.(resultado.datos)
               if (!esCrear) setEditando(false)

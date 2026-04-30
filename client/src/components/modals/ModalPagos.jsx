@@ -45,10 +45,10 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
 
   // Cuota asignada al cliente (buscada en la lista de cuotas por id)
   const cuotaId     = cliente.tipo_cuota?._id ?? cliente.tipo_cuota
-  const cuotaActual = cuotas.find(c => c._id === cuotaId)
+  const cuotaActual = cuotas.find(cuota => cuota._id === cuotaId)
 
   // Primer pago pendiente (para saber si hay algo que confirmar)
-  const primerPendiente = pagos.find(p => p.pendiente)
+  const primerPendiente = pagos.find(pago => pago.pendiente)
 
   // Estado del último pago para la fila de info superior
   const estadoUltimo = pagos.length > 0

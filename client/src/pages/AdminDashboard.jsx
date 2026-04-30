@@ -106,16 +106,16 @@ function AdminDashboard() {
       .finally(() => setCargando(false))
   }, [])
 
-  // Cargar lista de tipos de cuota (usada en el modal de confirmación de pago)
+  // Cargar lista de tipos de cuota (usada en ModalPagos, ModalCambioCuota y el modal de confirmación de pago)
   useEffect(() => {
-    api.get('/api/cuotas').then(r => setCuotas(r.data.cuotas ?? [])).catch(() => {})
+    api.get('/api/cuotas').then(res => setCuotas(res.data.cuotas ?? [])).catch(() => {})
   }, [])
 
   // Cargar usuarios y último pago de cada cliente en paralelo
   useEffect(() => {
     Promise.all([
       fetchUsuarios(),
-      api.get('/api/stats/ultimo-pago').then(r => r.data).catch(() => ({})),
+      api.get('/api/stats/ultimo-pago').then(res => res.data).catch(() => ({})),
     ])
       .then(([{ clientes, empleados }, mapaUltimoPago]) => {
         setClientes(clientes)
@@ -133,15 +133,15 @@ function AdminDashboard() {
 
     return lista
       // Filtrar por estado activo/baja
-      .filter(u => {
-        if (filtroActivo === 'activos') return u.activo
-        if (filtroActivo === 'baja')    return !u.activo
+      .filter(usr => {
+        if (filtroActivo === 'activos') return usr.activo
+        if (filtroActivo === 'baja')    return !usr.activo
         return true
       })
       // Filtrar por estado del último pago (solo en vista clientes)
-      .filter(u => {
+      .filter(usr => {
         if (vista !== 'clientes' || filtroPago === 'todos') return true
-        const pago = ultimoPago[u._id]
+        const pago = ultimoPago[usr._id]
         const sinPagoEsteMes = !pago || pago.mes < mesActual
         if (filtroPago === 'no-generado') return sinPagoEsteMes
         if (sinPagoEsteMes) return false
@@ -150,12 +150,12 @@ function AdminDashboard() {
         return true
       })
       // Filtrar por texto de búsqueda sobre el campo seleccionado
-      .filter(u => {
+      .filter(usr => {
         if (!busqueda.trim()) return true
-        const valor = String(u[campoBusqueda] ?? '').toLowerCase()
+        const valor = String(usr[campoBusqueda] ?? '').toLowerCase()
         return valor.includes(busqueda.toLowerCase())
       })
-      .filter(u => !(vista === 'empleados' && u._id === usuario.id))
+      .filter(usr => !(vista === 'empleados' && usr._id === usuario.id))
       .sort((a, b) => {
         if (ordenar === 'nombre_asc')  return a.nombre.localeCompare(b.nombre)
         if (ordenar === 'nombre_desc') return b.nombre.localeCompare(a.nombre)
@@ -167,7 +167,7 @@ function AdminDashboard() {
 
   const esClientes = vista === 'clientes'
 
-  // Dar de baja o reactivar un usuario; actualiza el estado local sin recargar la lista completa
+  // Dar de baja (PATCH /baja) o reactivar (PATCH /alta) un usuario; actualiza el estado local sin recargar la lista completa
   const toggleActivo = async (u) => {
     const tipo = esClientes ? 'clientes' : (u.rol === 'admin' ? 'administradores' : 'entrenadores')
     setProcesando(u._id)
@@ -175,7 +175,7 @@ function AdminDashboard() {
       if (u.activo) {
         await api.patch(`/api/${tipo}/${u._id}/baja`)
       } else {
-        await api.put(`/api/${tipo}/${u._id}`, { activo: true })
+        await api.patch(`/api/${tipo}/${u._id}/alta`)
       }
       const actualizar = lista => lista.map(item =>
         item._id === u._id ? { ...item, activo: !item.activo } : item
@@ -354,7 +354,7 @@ function AdminDashboard() {
           mesActual={mesActual}
           procesando={procesando}
           confirmandoPago={confirmandoPago}
-          onVerPerfil={u => setModalUsuario({ usuario: u })}
+          onVerPerfil={usr => setModalUsuario({ usuario: usr })}
           onVerPagos={setModalPagos}
           onCambiarCuota={setModalCambioCuota}
           onBajaAlta={setConfirmacionBajaAlta}
@@ -444,12 +444,12 @@ function AdminDashboard() {
           onClose={() => setModalPagos(null)}
           onPagoConfirmado={() => {
             // Refrescar el mapa de último pago para que el badge de la tabla se actualice
-            api.get('/api/stats/ultimo-pago').then(r => setUltimoPago(r.data)).catch(() => {})
+            api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
           }}
           onCuotaCambiada={(clienteActualizado) => {
             // Actualizar el cliente en la lista local tras cambiar la cuota desde dentro del modal
-            setClientes(prev => prev.map(c =>
-              c._id === clienteActualizado._id ? clienteActualizado : c
+            setClientes(prev => prev.map(cliente =>
+              cliente._id === clienteActualizado._id ? clienteActualizado : cliente
             ))
             setModalPagos(clienteActualizado)
           }}
@@ -463,8 +463,8 @@ function AdminDashboard() {
           onClose={() => setModalCambioCuota(null)}
           onGuardar={(clienteActualizado) => {
             // Actualizar el cliente en la lista local para reflejar la nueva cuota sin recargar
-            setClientes(prev => prev.map(c =>
-              c._id === clienteActualizado._id ? clienteActualizado : c
+            setClientes(prev => prev.map(cliente =>
+              cliente._id === clienteActualizado._id ? clienteActualizado : cliente
             ))
           }}
         />
@@ -472,7 +472,7 @@ function AdminDashboard() {
 
       {confirmacionPago && (() => {
         const { usuario, pago } = confirmacionPago
-        const cuota = cuotas.find(c => c.nombre === pago.tipo_cuota)
+        const cuota = cuotas.find(tipoCuota => tipoCuota.nombre === pago.tipo_cuota)
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className={s.modalBackdrop} />

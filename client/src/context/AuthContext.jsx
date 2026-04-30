@@ -1,7 +1,6 @@
-import { createContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import api, { setSesionExpiradaCallback } from '../services/api'
-
-export const AuthContext = createContext(null)
+import { AuthContext } from './authContext'
 
 // Leer el token de la cookie al cargar la página
 const leerCookie = () => {
