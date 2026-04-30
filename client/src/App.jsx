@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext.jsx'
 import { useAuth } from './hooks/useAuth'
 import RutaProtegida from './components/auth/RutaProtegida'
 import RutaRol from './components/auth/RutaRol'
