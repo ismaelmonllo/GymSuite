@@ -300,13 +300,17 @@ export const obtenerStatsMesPendientes = async (req, res) => {
 
 }
 
-// Devolver el último pago de cada cliente: { clienteId: { pendiente, mes } }
+// Devolver el último pago de cada cliente hasta el mes actual: { clienteId: { pendiente, mes } }
+// Filtra por mes <= mesActual para ignorar meses futuros generados por cuotas multimensuales
 export const obtenerUltimoPagoPorCliente = async (req, res) => {
 
     try {
 
-        // Agrupar por cliente, quedarse con el pago del mes más reciente
+        const mesActual = formatearMes(new Date())
+
+        // Agrupar por cliente quedándose con el pago más reciente que no sea mes futuro
         const resultado = await Pagos.aggregate([
+            { $match: { mes: { $lte: mesActual } } },
             { $sort: { mes: -1 } },
             { $group: { _id: '$cliente_id', pendiente: { $first: '$pendiente' }, mes: { $first: '$mes' }, grupo_pago: { $first: '$grupo_pago' }, tipo_cuota: { $first: '$tipo_cuota' } } }
         ])

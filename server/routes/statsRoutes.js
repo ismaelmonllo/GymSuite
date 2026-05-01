@@ -185,6 +185,6 @@ router.get('/altas-mensuales', verificarToken, verificarRol('admin'), obtenerSta
  *                     type: string
  *                     example: 'Mensual'
  */
-router.get('/ultimo-pago', verificarToken, verificarRol('admin'), obtenerUltimoPagoPorCliente);
+router.get('/ultimo-pago', verificarToken, verificarRol('admin', 'entrenador'), obtenerUltimoPagoPorCliente);
 
 export default router;

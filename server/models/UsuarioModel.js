@@ -12,6 +12,7 @@ const usuarioSchema = new mongoose.Schema({
     fecha_nacimiento: { type: Date, required: true },
     DNI: { type: String, required: true, unique: true },
     rol: { type: String, required: true, enum: ['admin', 'entrenador', 'cliente'] },
+    sexo:  { type: String, enum: ['masculino', 'femenino'] },
     nivel: { type: String, enum: ['principiante', 'intermedio', 'avanzado'] }, // solo cliente
     fecha_alta: { type: Date, required: true, default: Date.now },
     activo: { type: Boolean, required: true, default: true },

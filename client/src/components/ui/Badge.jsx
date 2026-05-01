@@ -13,7 +13,7 @@ const variantes = {
 
 function Badge({ variante, children }) {
   return (
-    <span className={`text-xs px-2 py-1 rounded-full font-medium ${variantes[variante] ?? ''}`}>
+    <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${variantes[variante] ?? ''}`}>
       {children}
     </span>
   )

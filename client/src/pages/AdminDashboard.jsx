@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { color, s } from '../styles'
 import { formatearImporte } from '../utils'
+import BtnGenerarPagos from '../components/dashboard/BtnGenerarPagos'
 import ModalGestionCuotas from '../components/modals/ModalGestionCuotas'
 import ModalConfirmacion from '../components/modals/ModalConfirmacion'
 import ModalUsuario from '../components/modals/ModalUsuario'
@@ -247,25 +248,13 @@ function AdminDashboard() {
   return (
     <div className={`min-h-screen ${color.bgPagina} flex flex-col`}>
       <Header usuario={usuario} onLogout={logout} onAvatarClick={abrirPerfilPropio}>
-        <button
-          onClick={() => setConfirmarGenerarPagos(true)}
-          disabled={generandoPagos}
-          className={`text-sm px-4 py-2 rounded-lg border ${color.borde} ${color.textoApagado} hover:text-orange-400 transition-colors disabled:opacity-40`}
-        >
-          {generandoPagos ? 'Generando...' : 'Generar pagos'}
-        </button>
+        <BtnGenerarPagos onClick={() => setConfirmarGenerarPagos(true)} cargando={generandoPagos} />
       </Header>
 
       <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full mx-auto flex flex-col gap-6 sm:gap-8">
 
         {/* Generar pagos: visible solo en móvil (en desktop va en el header) */}
-        <button
-          className={`sm:hidden text-sm px-4 py-2 rounded-lg border ${color.borde} ${color.textoApagado} hover:text-orange-400 transition-colors disabled:opacity-40`}
-          onClick={() => setConfirmarGenerarPagos(true)}
-          disabled={generandoPagos}
-        >
-          {generandoPagos ? 'Generando...' : 'Generar pagos'}
-        </button>
+        <BtnGenerarPagos onClick={() => setConfirmarGenerarPagos(true)} cargando={generandoPagos} className="sm:hidden" />
 
         {/* Cards de estadísticas + botón gestionar cuotas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">

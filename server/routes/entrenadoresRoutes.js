@@ -1,6 +1,6 @@
 // Rutas de entrenadores: solo el admin puede gestionarlos
 import express from 'express';
-import { verificarToken, verificarRol, verificarRolBody, forzarRolQuery } from '../middleware/auth.js';
+import { verificarToken, verificarRol, verificarRolBody, forzarRolQuery, verificarPropioOAdmin } from '../middleware/auth.js';
 import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja, darDeAlta } from '../controllers/usuarioController.js';
 
 const router = express.Router();
@@ -51,7 +51,7 @@ router.get('/', verificarToken, verificarRol('admin'), forzarRolQuery('entrenado
  *       404:
  *         description: Entrenador no encontrado
  */
-router.get('/:id', verificarToken, verificarRol('admin'), verEmpleado);
+router.get('/:id', verificarToken, verificarRol('admin', 'entrenador'), verificarPropioOAdmin, verEmpleado);
 
 /**
  * @swagger

@@ -53,6 +53,12 @@ export const verificarRol = (...roles) => (req, res, next) => {
 
 }
 
+// Permitir acceso si el usuario es admin, o si accede a su propio recurso por :id
+export const verificarPropioOAdmin = (req, res, next) => {
+    if (req.usuario.rol === 'admin' || req.usuario.id === req.params.id) return next()
+    return res.status(403).json({ mensaje: 'Acceso denegado' })
+}
+
 // Verificar que la petición viene de cron-job.org comprobando el header x-cron-secret
 // Solo para rutas de cron: no requiere JWT ni usuario autenticado
 export const verificarCronSecret = (req, res, next) => {

@@ -2,7 +2,8 @@ import { X } from 'lucide-react'
 import { color, s } from '../../styles'
 
 // Carcasa reutilizable para todos los modales: overlay + card centrada + cabecera con título y cierre
-function ModalBase({ titulo, onClose, children }) {
+// ancho acepta cualquier clase max-w-* de Tailwind; por defecto max-w-xl
+function ModalBase({ titulo, onClose, ancho = 'max-w-xl', children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
 
@@ -13,7 +14,7 @@ function ModalBase({ titulo, onClose, children }) {
       />
 
       {/* Card del modal */}
-      <div className={`relative z-10 w-full max-w-xl rounded-xl ${s.card} flex flex-col max-h-full`}>
+      <div className={`relative z-10 w-full ${ancho} rounded-xl ${s.card} flex flex-col max-h-full`}>
 
         {/* Cabecera */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${color.bordeHeader} shrink-0`}>

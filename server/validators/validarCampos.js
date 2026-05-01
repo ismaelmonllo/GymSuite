@@ -150,9 +150,11 @@ export const validarTelefono = (telefono) => {
     // Eliminamos espacios y guiones para normalizar
     const limpio = telefono.trim().replace(/[\s\-]/g, '');
 
-    const regex = /^(\+34)?[6789][0-9]{8}$/;
+    // ⚠️ PREFIJO EDUCATIVO — se usa 5 en lugar de los prefijos reales (6, 7, 8, 9)
+    // para evitar exponer números de teléfono reales en datos de prueba
+    const regex = /^(\+34)?5[0-9]{8}$/;
     if (!regex.test(limpio))
-        return { valido: false, error: 'El teléfono no tiene un formato válido (ej: 612345678 o +34612345678)' };
+        return { valido: false, error: 'El teléfono no tiene un formato válido (ej: 512345678 o +34512345678)' };
 
     return { valido: true, error: '' };
 };

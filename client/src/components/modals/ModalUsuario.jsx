@@ -27,13 +27,14 @@ const formInicial = (usuario, rolEditable) => ({
   telefono:         usuario?.telefono         ?? '',
   DNI:              usuario?.DNI              ?? '',
   rol:              usuario?.rol              ?? (rolEditable ? 'entrenador' : 'cliente'),
+  sexo:             usuario?.sexo             ?? '',
   nivel:            usuario?.nivel            ?? '',
   tipo_cuota:       usuario?.tipo_cuota?._id  ?? usuario?.tipo_cuota ?? '',
 })
 
 const erroresIniciales = {
   nombre: '', apellidos: '', correo: '',
-  DNI: '', telefono: '', fecha_nacimiento: '',
+  DNI: '', telefono: '', fecha_nacimiento: '', sexo: '',
 }
 
 // Validar el formulario; devuelve objeto de errores (campos vacíos = sin error)
@@ -63,6 +64,11 @@ const validarForm = (form) => {
   // Fecha de nacimiento es opcional, pero no puede ser futura
   if (form.fecha_nacimiento && new Date(form.fecha_nacimiento) > new Date()) {
     e.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura.'
+  }
+
+  // Sexo obligatorio para clientes
+  if (form.rol === 'cliente' && !form.sexo) {
+    e.sexo = 'El sexo es obligatorio.'
   }
 
   return e
@@ -285,16 +291,25 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
           </CampoFormulario>
         )}
 
-        {/* Nivel de entrenamiento — solo si el rol es cliente */}
+        {/* Sexo y nivel — solo para clientes */}
         {form.rol === 'cliente' && (
-          <CampoFormulario label="Nivel">
-            <select className={inputClass(!editando)} disabled={!editando} value={form.nivel} onChange={e => actualizarCampo('nivel', e.target.value)}>
-              <option value="">Sin especificar</option>
-              <option value="principiante">Principiante</option>
-              <option value="intermedio">Intermedio</option>
-              <option value="avanzado">Avanzado</option>
-            </select>
-          </CampoFormulario>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <CampoFormulario label="Sexo" error={errores.sexo} className="flex-1">
+              <select className={inputClass(!editando)} disabled={!editando} value={form.sexo} onChange={e => actualizarCampo('sexo', e.target.value)}>
+                <option value="">Seleccionar</option>
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+              </select>
+            </CampoFormulario>
+            <CampoFormulario label="Nivel" className="flex-1">
+              <select className={inputClass(!editando)} disabled={!editando} value={form.nivel} onChange={e => actualizarCampo('nivel', e.target.value)}>
+                <option value="">Sin especificar</option>
+                <option value="principiante">Principiante</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzado">Avanzado</option>
+              </select>
+            </CampoFormulario>
+          </div>
         )}
 
         {/* Cuota — solo al crear un cliente; en edición se gestiona desde ModalPagos */}

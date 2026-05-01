@@ -1,10 +1,12 @@
-import { User, Ban, RotateCcw, CheckCircle, CalendarDays, Receipt } from 'lucide-react'
+import { User, Ban, RotateCcw, CheckCircle, CalendarDays, Receipt, Ruler } from 'lucide-react'
 import Badge from '../ui/Badge'
 import IconButton from '../ui/IconButton'
 import { color, s } from '../../styles'
 import { formatearFecha } from '../../utils'
 
 // Lista de usuarios: cards en móvil + tabla en desktop
+// Si en el futuro hay más botones variables por rol, considerar prop `accionesExtra` (JSX)
+// que el padre inyecte directamente en renderAcciones, evitando acumular props booleanas.
 function ListaUsuarios({
   lista,
   cargando,
@@ -13,9 +15,11 @@ function ListaUsuarios({
   mesActual,
   procesando,
   confirmandoPago,
+  mostrarMediciones = false,
   onVerPerfil,
   onVerPagos,
   onCambiarCuota,
+  onVerMediciones,
   onBajaAlta,
   onConfirmarPago,
 }) {
@@ -52,6 +56,7 @@ function ListaUsuarios({
       <IconButton icono={User} titulo="Ver perfil" onClick={() => onVerPerfil(usuario)} />
       {esClientes && <IconButton icono={Receipt} titulo="Ver pagos" onClick={() => onVerPagos(usuario)} />}
       {esClientes && <IconButton icono={CalendarDays} titulo="Cambiar cuota" onClick={() => onCambiarCuota(usuario)} />}
+      {esClientes && mostrarMediciones && <IconButton icono={Ruler} titulo="Ver mediciones" onClick={() => onVerMediciones(usuario)} />}
       <IconButton
         icono={usuario.activo ? Ban : RotateCcw}
         titulo={usuario.activo ? 'Dar de baja' : 'Dar de alta'}

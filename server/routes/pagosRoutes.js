@@ -62,7 +62,7 @@ router.get('/mis-pagos', verificarToken, verificarRol('cliente'), obtenerMisPago
  *       200:
  *         description: Todos los clientes ya tenían pagos para este mes
  */
-router.post('/generar', verificarToken, verificarRol('admin'), generarPagos);
+router.post('/generar', verificarToken, verificarRol('admin', 'entrenador'), generarPagos);
 
 /**
  * @swagger
