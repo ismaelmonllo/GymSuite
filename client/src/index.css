@@ -6,4 +6,6 @@ input[type="date"] {
   -moz-appearance: textfield;
   min-height: 1.2em;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
