@@ -272,7 +272,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
               type="date"
               value={form.fecha}
               disabled
-              className={`${s.input} w-full opacity-60 cursor-default`}
+              className={`${s.input} w-full opacity-60 cursor-default min-h-11`}
             />
           </CampoFormulario>
           <CampoFormulario label="Peso (kg)" error={errores.peso}>
