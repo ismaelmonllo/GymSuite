@@ -1,13 +1,42 @@
 @import "tailwindcss";
 
+/* Fix bug iOS Safari para input[type="date"]: el shadow DOM interno
+   (::-webkit-datetime-edit y ::-webkit-date-and-time-value) tiene padding
+   y alineación que generan un ancho/alto intrínseco mayor que el resto de
+   inputs e ignoran width: 100%. Reglas tomadas del plugin oficial
+   @tailwindcss/forms (PR tailwindlabs/tailwindcss-forms#109). */
 input[type="date"] {
-  appearance: textfield;
-  -webkit-appearance: textfield;
-  -moz-appearance: textfield;
-  min-height: 1.2em;
-  /* min-width: 0 anula el mínimo intrínseco que Safari/iOS impone en inputs de fecha */
+  -webkit-appearance: none;
+  appearance: none;
   min-width: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  display: inline-flex;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: inherit;
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-hour-field,
+input[type="date"]::-webkit-datetime-edit-minute-field,
+input[type="date"]::-webkit-datetime-edit-second-field,
+input[type="date"]::-webkit-datetime-edit-millisecond-field,
+input[type="date"]::-webkit-datetime-edit-meridiem-field {
+  padding-top: 0;
+  padding-bottom: 0;
 }

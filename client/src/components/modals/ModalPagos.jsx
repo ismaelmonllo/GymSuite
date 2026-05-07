@@ -126,7 +126,7 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
       )}
 
       {/* Historial agrupado: cada grupo_pago en su propio contenedor */}
-      <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1">
         {cargando ? (
           <p className={`text-sm ${color.textoApagado}`}>Cargando...</p>
         ) : grupos.length === 0 ? (

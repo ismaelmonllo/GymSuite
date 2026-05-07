@@ -187,7 +187,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     <ModalBase titulo={titulo} onClose={onClose}>
 
       {/* Campos con scroll si hay muchos */}
-      <div className="flex flex-col gap-4 max-h-[65vh] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-4 max-h-[65vh] overflow-y-auto overflow-x-hidden pr-1">
 
         {/* Nombre + Apellidos: apilados en móvil, misma fila en desktop */}
         <div className="flex flex-col sm:flex-row gap-3">

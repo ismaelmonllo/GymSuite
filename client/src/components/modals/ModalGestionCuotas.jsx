@@ -131,7 +131,7 @@ function ModalGestionCuotas({ onClose }) {
     <ModalBase titulo="Gestionar cuotas" onClose={handleClose}>
 
       {/* Lista de cards de cuotas */}
-      <div ref={listaRef} className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
+      <div ref={listaRef} className="flex flex-col gap-3 max-h-80 overflow-y-auto overflow-x-hidden pr-1">
         {cargando ? (
           <p className={color.textoApagado}>Cargando...</p>
         ) : (

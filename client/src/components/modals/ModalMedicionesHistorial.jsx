@@ -91,7 +91,7 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, medic
       )}
 
       {/* Contenido */}
-      <div className="max-h-[55vh] overflow-y-auto">
+      <div className="max-h-[55vh] overflow-y-auto overflow-x-hidden">
         {cargando ? (
           <p className={`text-sm ${color.textoApagado}`}>Cargando...</p>
         ) : mediciones.length === 0 ? (
