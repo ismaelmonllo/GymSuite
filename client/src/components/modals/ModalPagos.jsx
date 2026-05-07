@@ -3,8 +3,9 @@ import { CheckCircle, Clock } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalCambioCuota from './ModalCambioCuota'
 import ModalResultado from './ModalResultado'
+import ModalConfirmarPago from './ModalConfirmarPago'
 import api from '../../services/api'
-import { color, s } from '../../styles'
+import { color } from '../../styles'
 
 // Icono según si el pago está confirmado o pendiente
 const iconoPago = (pendiente) =>
@@ -24,7 +25,8 @@ const agruparPorGrupo = (pagos) => {
 }
 
 // Historial de pagos de un cliente: cuota actual, botones de acción e historial agrupado
-function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiada }) {
+// soloLectura: modo cliente — usa /api/pagos/mis-pagos y oculta botones de empleado
+function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCambiada, soloLectura = false }) {
   const [pagos, setPagos]             = useState([])
   const [cargando, setCargando]       = useState(true)
   const [registrando, setRegistrando]       = useState(false)
@@ -32,20 +34,24 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
   const [modalCuota, setModalCuota]         = useState(false)
   const [confirmando, setConfirmando]       = useState(false)
 
-  // Cargar historial de pagos del cliente al abrir
+  // Cargar historial: ruta propia del cliente o ruta de empleado según el modo
   useEffect(() => {
-    api.get(`/api/pagos/cliente/${cliente._id}`)
+    const endpoint = soloLectura
+      ? '/api/pagos/mis-pagos'
+      : `/api/pagos/cliente/${cliente._id}`
+    api.get(endpoint)
       .then(res => setPagos(res.data))
       .catch(err => {
         // 404 significa sin pagos aún; cualquier otro error se registra
         if (err.response?.status !== 404) console.error('Error cargando pagos:', err)
       })
       .finally(() => setCargando(false))
-  }, [cliente._id])
+  }, [cliente._id, soloLectura])
 
-  // Cuota asignada al cliente (buscada en la lista de cuotas por id)
-  const cuotaId     = cliente.tipo_cuota?._id ?? cliente.tipo_cuota
-  const cuotaActual = cuotas.find(cuota => cuota._id === cuotaId)
+  // En modo soloLectura la cuota ya viene populada en el objeto cliente
+  const cuotaActual = soloLectura
+    ? cliente.tipo_cuota
+    : cuotas.find(cuota => cuota._id === (cliente.tipo_cuota?._id ?? cliente.tipo_cuota))
 
   // Primer pago pendiente (para saber si hay algo que confirmar)
   const primerPendiente = pagos.find(pago => pago.pendiente)
@@ -96,26 +102,28 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
         </div>
       </div>
 
-      {/* Botones de acción */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => setModalCuota(true)}
-          className={`flex-1 py-2 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} text-sm transition-colors`}
-        >
-          Cambiar cuota
-        </button>
-        <button
-          onClick={() => setConfirmando(true)}
-          disabled={registrando || !primerPendiente}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-            primerPendiente
-              ? 'bg-orange-600 hover:bg-orange-500 text-white'
-              : `border ${color.borde} ${color.textoApagado} opacity-50 cursor-not-allowed`
-          }`}
-        >
-          {registrando ? 'Registrando...' : '+ Registrar pago'}
-        </button>
-      </div>
+      {/* Botones de acción — solo visibles para empleados */}
+      {!soloLectura && (
+        <div className="flex gap-3">
+          <button
+            onClick={() => setModalCuota(true)}
+            className={`flex-1 py-2 rounded-lg border ${color.borde} ${color.texto} ${color.bgHover} text-sm transition-colors`}
+          >
+            Cambiar cuota
+          </button>
+          <button
+            onClick={() => setConfirmando(true)}
+            disabled={registrando || !primerPendiente}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              primerPendiente
+                ? 'bg-orange-600 hover:bg-orange-500 text-white'
+                : `border ${color.borde} ${color.textoApagado} opacity-50 cursor-not-allowed`
+            }`}
+          >
+            {registrando ? 'Registrando...' : '+ Registrar pago'}
+          </button>
+        </div>
+      )}
 
       {/* Historial agrupado: cada grupo_pago en su propio contenedor */}
       <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-1">
@@ -169,28 +177,13 @@ function ModalPagos({ cliente, cuotas, onClose, onPagoConfirmado, onCuotaCambiad
 
       {/* Confirmación antes de registrar pago: muestra resumen del pago pendiente */}
       {confirmando && primerPendiente && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className={s.modalBackdrop} onClick={() => setConfirmando(false)} />
-          <div className={s.modalCard}>
-            <h3 className={`font-semibold ${color.texto}`}>Confirmar pago</h3>
-            <div className={`flex flex-col gap-1 text-sm ${color.textoApagado}`}>
-              <p><span className={color.texto}>{cliente.nombre} {cliente.apellidos}</span></p>
-              <p>Cuota: <span className={color.texto}>{primerPendiente.tipo_cuota}{cuotaActual ? ` — ${cuotaActual.importe} €` : ''}</span></p>
-              <p>Mes: <span className={color.texto}>{primerPendiente.mes}</span></p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmando(false)} className={s.btnSecundario}>
-                Cancelar
-              </button>
-              <button
-                onClick={() => { setConfirmando(false); registrarPago() }}
-                className={`flex-1 ${s.btnPrimary}`}
-              >
-                Confirmar pago
-              </button>
-            </div>
-          </div>
-        </div>
+        <ModalConfirmarPago
+          cliente={cliente}
+          pago={primerPendiente}
+          cuota={cuotaActual}
+          onConfirmar={() => { setConfirmando(false); registrarPago() }}
+          onCancelar={() => setConfirmando(false)}
+        />
       )}
 
       {/* Modal de cambio de cuota anidado */}

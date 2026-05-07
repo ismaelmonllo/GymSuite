@@ -247,6 +247,22 @@ export const validarRol = (rol) => {
 };
 
 /**
+ * Valida que el sexo sea 'masculino' o 'femenino'.
+ * Solo aplica a usuarios con rol 'cliente'.
+ * @param {string} sexo
+ * @returns {{ valido: boolean, error: string }}
+ */
+export const validarSexo = (sexo) => {
+    if (!sexo)
+        return { valido: false, error: 'El sexo no puede estar vacío' };
+
+    if (!['masculino', 'femenino'].includes(sexo))
+        return { valido: false, error: "El sexo debe ser 'masculino' o 'femenino'" };
+
+    return { valido: true, error: '' };
+};
+
+/**
  * Valida que el nivel sea uno de los valores permitidos: 'principiante', 'intermedio', 'avanzado'.
  * Solo aplica a usuarios con rol 'cliente'.
  * @param {string} nivel

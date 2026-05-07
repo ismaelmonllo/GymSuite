@@ -14,6 +14,7 @@ import ModalConfirmacion from '../components/modals/ModalConfirmacion'
 import ModalUsuario from '../components/modals/ModalUsuario'
 import ModalCambioCuota from '../components/modals/ModalCambioCuota'
 import ModalPagos from '../components/modals/ModalPagos'
+import ModalConfirmarPago from '../components/modals/ModalConfirmarPago'
 
 
 // Lanzar los 7 endpoints de stats en paralelo y devolver un objeto normalizado
@@ -227,17 +228,16 @@ function AdminDashboard() {
     setConfirmacionPago({ usuario: u, pago })
   }
 
-  // Marcar el grupo de pagos como cobrado y actualizar el badge en la tabla sin recargar
+  // Marcar el grupo de pagos como cobrado y refrescar el mapa de últimos pagos
+  // Refetch en lugar de patch local para que la fecha y demás campos queden actualizados
   const ejecutarConfirmacionPago = async () => {
     const { usuario, pago } = confirmacionPago
     setConfirmacionPago(null)
     setConfirmandoPago(usuario._id)
     try {
       await api.post('/api/pagos/registrar', { grupo_pago: pago.grupo_pago })
-      setUltimoPago(prev => ({
-        ...prev,
-        [usuario._id]: { ...prev[usuario._id], pendiente: false }
-      }))
+      const resStats = await api.get('/api/stats/ultimo-pago')
+      setUltimoPago(resStats.data)
     } catch {
       setErrorOperacion(`No se pudo confirmar el pago de ${usuario.nombre} ${usuario.apellidos}.`)
     } finally {
@@ -459,31 +459,15 @@ function AdminDashboard() {
         />
       )}
 
-      {confirmacionPago && (() => {
-        const { usuario, pago } = confirmacionPago
-        const cuota = cuotas.find(tipoCuota => tipoCuota.nombre === pago.tipo_cuota)
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className={s.modalBackdrop} />
-            <div className={s.modalCard}>
-              <h3 className={`font-semibold ${color.texto}`}>Confirmar pago</h3>
-              <div className={`flex flex-col gap-1 text-sm ${color.textoApagado}`}>
-                <p><span className={color.texto}>{usuario.nombre} {usuario.apellidos}</span></p>
-                <p>Cuota: <span className={color.texto}>{pago.tipo_cuota}{cuota ? ` — ${formatearImporte(cuota.importe)}` : ''}</span></p>
-                <p>Mes: <span className={color.texto}>{pago.mes}</span></p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmacionPago(null)} className={s.btnSecundario}>
-                  Cancelar
-                </button>
-                <button onClick={ejecutarConfirmacionPago} className={`flex-1 ${s.btnPrimary}`}>
-                  Confirmar pago
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {confirmacionPago && (
+        <ModalConfirmarPago
+          cliente={confirmacionPago.usuario}
+          pago={confirmacionPago.pago}
+          cuota={cuotas.find(tipoCuota => tipoCuota.nombre === confirmacionPago.pago.tipo_cuota)}
+          onConfirmar={ejecutarConfirmacionPago}
+          onCancelar={() => setConfirmacionPago(null)}
+        />
+      )}
     </div>
   )
 }

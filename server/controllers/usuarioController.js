@@ -31,6 +31,23 @@ export const listarClientes = async (req, res) => {
 
 }
 
+// Devolver el perfil completo del cliente autenticado con la cuota populada
+export const obtenerMiPerfil = async (req, res) => {
+
+    try {
+
+        const cliente = await User.findById(req.usuario.id).populate('tipo_cuota');
+        if (!cliente) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        return res.status(200).json({ cliente });
+
+    } catch (error) {
+
+        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
+
+    }
+
+}
+
 // Buscar un cliente por su ID y devolverlo si existe y tiene rol 'cliente'
 export const verCliente = async (req, res) => {
 
@@ -61,7 +78,7 @@ export const crearCliente = async (req, res) => {
 
     try {
 
-        const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, nivel, tipo_cuota } = req.body;
+        const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, sexo, nivel, tipo_cuota } = req.body;
 
         // Validar el formato de todos los campos antes de continuar
         const { valido, errores } = validarCrearCliente(req.body);
@@ -78,7 +95,7 @@ export const crearCliente = async (req, res) => {
         // Crear el documento y guardarlo con rol fijo 'cliente'
         const nuevoCliente = new User({
             nombre, apellidos, correo, contrasena: contrasenaCifrada,
-            telefono, direccion, fecha_nacimiento, DNI, nivel, tipo_cuota,
+            telefono, direccion, fecha_nacimiento, DNI, sexo, nivel, tipo_cuota,
             rol: 'cliente'
         });
         await nuevoCliente.save();

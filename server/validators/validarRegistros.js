@@ -8,6 +8,7 @@ import {
     validarFechaNacimiento,
     validarFecha,
     validarMes,
+    validarSexo,
     validarNivel,
     validarImporte,
     validarMeses,
@@ -44,6 +45,7 @@ export const validarCrearCliente = (datos) => {
     check(errores, 'correo',           validarCorreo(datos.correo));
     check(errores, 'fecha_nacimiento', validarFechaNacimiento(datos.fecha_nacimiento));
     check(errores, 'DNI',              validarDNI(datos.DNI));
+    check(errores, 'sexo',             validarSexo(datos.sexo));
     check(errores, 'nivel',            validarNivel(datos.nivel));
     check(errores, 'tipo_cuota',       validarObjectId(datos.tipo_cuota));
 

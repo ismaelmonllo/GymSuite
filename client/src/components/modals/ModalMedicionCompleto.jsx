@@ -94,6 +94,21 @@ const CAMPOS_OBLIGATORIOS = [
   ...PLIEGUES.map(campo => campo.id),
 ]
 
+// Campos que deben enviarse como número (no como string)
+const CAMPOS_NUMERICOS = new Set([
+  'peso', 'altura', 'porcentaje_grasa',
+  ...PERIMETROS.map(campo => campo.id),
+  ...PLIEGUES.map(campo => campo.id),
+])
+
+// Preparar el body para la API: convertir numéricos a Number y excluir strings vacíos
+const prepararBody = (datos) =>
+  Object.fromEntries(
+    Object.entries(datos)
+      .filter(([, v]) => v !== '')
+      .map(([k, v]) => [k, CAMPOS_NUMERICOS.has(k) ? Number(v) : v])
+  )
+
 // Construir formulario vacío para nueva medición con fecha de hoy
 const formVacio = () => ({
   fecha: hoy(), peso: '', altura: '', porcentaje_grasa: '',
@@ -132,7 +147,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   const esEmpleado = usuario.rol === 'admin' || usuario.rol === 'entrenador'
 
   const [modo, setModo]                     = useState(modoInicial)
-  const [form, setForm]                     = useState(medicion ? formDesdeMedicion(medicion) : formVacio())
+  const [form, setForm]                     = useState(modoInicial === 'nueva' ? formVacio() : (medicion ? formDesdeMedicion(medicion) : formVacio()))
   const [errores, setErrores]               = useState({})
   const [guardando, setGuardando]           = useState(false)
   const [confirmandoGuardar, setConfirmandoGuardar] = useState(false)
@@ -142,6 +157,10 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   const esEditar      = modo === 'editar'
   const esVer         = modo === 'ver'
   const camposActivos = esNueva || esEditar
+
+  // Valores de la medición anterior para mostrar como placeholder al crear una nueva
+  const previo    = esNueva && medicion ? formDesdeMedicion(medicion) : null
+  const imcPrevio = previo ? calcularIMC(previo.peso, previo.altura) : null
 
   // Recalcular % grasa automáticamente cuando cambian los pliegues
   useEffect(() => {
@@ -189,10 +208,10 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
     try {
       let medicionGuardada
       if (esNueva) {
-        const res = await api.post('/api/mediciones', { ...form, cliente_id: cliente._id })
+        const res = await api.post('/api/mediciones', prepararBody({ ...form, cliente_id: cliente._id }))
         medicionGuardada = res.data.medicion ?? res.data
       } else {
-        const res = await api.put(`/api/mediciones/${medicion._id}`, form)
+        const res = await api.put(`/api/mediciones/${medicion._id}`, prepararBody(form))
         medicionGuardada = res.data.medicion ?? res.data
       }
       onGuardado?.(medicionGuardada)
@@ -225,7 +244,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
       value={form[id]}
       onChange={e => actualizarCampo(id, e.target.value)}
       disabled={!camposActivos}
-      placeholder={camposActivos ? placeholder : ''}
+      placeholder={previo?.[id] ? String(previo[id]) : (camposActivos ? placeholder : '')}
       className={`${s.input} w-full disabled:opacity-60`}
     />
   )
@@ -266,7 +285,8 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
           <CampoFormulario label="% Grasa (auto)">
             <input
               type="text"
-              value={form.porcentaje_grasa !== '' ? `${form.porcentaje_grasa} %` : '—'}
+              value={form.porcentaje_grasa !== '' ? `${form.porcentaje_grasa} %` : ''}
+              placeholder={previo?.porcentaje_grasa ? `${previo.porcentaje_grasa} %` : '—'}
               disabled
               className={`${s.input} w-full opacity-60 cursor-default`}
             />
@@ -275,7 +295,8 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
           <CampoFormulario label="IMC (auto)">
             <input
               type="text"
-              value={(() => { const v = calcularIMC(form.peso, form.altura); return v !== null ? String(v) : '—' })()}
+              value={(() => { const v = calcularIMC(form.peso, form.altura); return v !== null ? String(v) : '' })()}
+              placeholder={imcPrevio !== null ? String(imcPrevio) : '—'}
               disabled
               className={`${s.input} w-full opacity-60 cursor-default`}
             />
@@ -314,7 +335,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
           value={form.observaciones}
           onChange={e => actualizarCampo('observaciones', e.target.value)}
           disabled={!camposActivos}
-          placeholder={camposActivos ? 'Notas adicionales (opcional)' : ''}
+          placeholder={camposActivos ? (previo?.observaciones || 'Notas adicionales (opcional)') : ''}
           rows={3}
           className={`${s.input} w-full resize-none disabled:opacity-60`}
         />

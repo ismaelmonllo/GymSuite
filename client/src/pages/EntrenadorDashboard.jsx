@@ -11,6 +11,7 @@ import ModalUsuario from '../components/modals/ModalUsuario'
 import ModalCambioCuota from '../components/modals/ModalCambioCuota'
 import ModalPagos from '../components/modals/ModalPagos'
 import ModalMedicionesHistorial from '../components/modals/ModalMedicionesHistorial'
+import ModalConfirmarPago from '../components/modals/ModalConfirmarPago'
 
 
 const mesActual = new Date().toISOString().slice(0, 7)
@@ -124,7 +125,7 @@ function EntrenadorDashboard() {
           ? { exito: true, mensaje: 'Todos los clientes ya tienen pagos generados para este mes.' }
           : { exito: true, mensaje: `Pagos generados correctamente.\n${clientes_procesados} clientes procesados, ${generados} pagos creados.` }
       )
-      api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
+      api.get('/api/stats/ultimo-pago').then(resStats => setUltimoPago(resStats.data)).catch(() => {})
     } catch (err) {
       setResultadoGenerarPagos({ exito: false, mensaje: err.response?.data?.mensaje ?? 'Error al generar los pagos.' })
     } finally {
@@ -137,7 +138,7 @@ function EntrenadorDashboard() {
     try {
       const res = await api.get(`/api/entrenadores/${usuario.id}`)
       const datos = res.data.empleado ?? res.data
-      setModalUsuario({ usuario: datos, rolEditable: false })
+      setModalUsuario({ usuario: datos })
     } catch {
       setErrorOperacion('No se pudo cargar tu perfil. Inténtalo de nuevo.')
     }
@@ -150,17 +151,16 @@ function EntrenadorDashboard() {
     setConfirmacionPago({ usuario: u, pago })
   }
 
-  // Marcar el grupo de pagos como cobrado y actualizar el badge sin recargar
+  // Marcar el grupo de pagos como cobrado y refrescar el mapa de últimos pagos
+  // Refetch en lugar de patch local para que la fecha y demás campos queden actualizados
   const ejecutarConfirmacionPago = async () => {
     const { usuario: clienteConfirmado, pago } = confirmacionPago
     setConfirmacionPago(null)
     setConfirmandoPago(clienteConfirmado._id)
     try {
       await api.post('/api/pagos/registrar', { grupo_pago: pago.grupo_pago })
-      setUltimoPago(prev => ({
-        ...prev,
-        [clienteConfirmado._id]: { ...prev[clienteConfirmado._id], pendiente: false }
-      }))
+      const resStats = await api.get('/api/stats/ultimo-pago')
+      setUltimoPago(resStats.data)
     } catch {
       setErrorOperacion(`No se pudo confirmar el pago de ${clienteConfirmado.nombre} ${clienteConfirmado.apellidos}.`)
     } finally {
@@ -189,7 +189,7 @@ function EntrenadorDashboard() {
           <div className="flex gap-3 w-full sm:w-auto sm:contents">
             <button
               className={`${s.btnPrimary} px-4 flex-1 sm:flex-none`}
-              onClick={() => setModalUsuario({ usuario: null, rolEditable: false })}
+              onClick={() => setModalUsuario({ usuario: null })}
             >
               + Añadir cliente
             </button>
@@ -316,31 +316,15 @@ function EntrenadorDashboard() {
         />
       )}
 
-      {confirmacionPago && (() => {
-        const { usuario: clienteConfirmado, pago } = confirmacionPago
-        const cuota = cuotas.find(tipoCuota => tipoCuota.nombre === pago.tipo_cuota)
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className={s.modalBackdrop} />
-            <div className={s.modalCard}>
-              <h3 className={`font-semibold ${color.texto}`}>Confirmar pago</h3>
-              <div className={`flex flex-col gap-1 text-sm ${color.textoApagado}`}>
-                <p><span className={color.texto}>{clienteConfirmado.nombre} {clienteConfirmado.apellidos}</span></p>
-                <p>Cuota: <span className={color.texto}>{pago.tipo_cuota}{cuota ? ` — ${cuota.importe}€` : ''}</span></p>
-                <p>Mes: <span className={color.texto}>{pago.mes}</span></p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmacionPago(null)} className={s.btnSecundario}>
-                  Cancelar
-                </button>
-                <button onClick={ejecutarConfirmacionPago} className={`flex-1 ${s.btnPrimary}`}>
-                  Confirmar pago
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {confirmacionPago && (
+        <ModalConfirmarPago
+          cliente={confirmacionPago.usuario}
+          pago={confirmacionPago.pago}
+          cuota={cuotas.find(tipoCuota => tipoCuota.nombre === confirmacionPago.pago.tipo_cuota)}
+          onConfirmar={ejecutarConfirmacionPago}
+          onCancelar={() => setConfirmacionPago(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 // Rutas de clientes: todas requieren autenticación y rol admin o entrenador
 import express from 'express';
 import { verificarToken, verificarRol } from '../middleware/auth.js';
-import { listarClientes, verCliente, crearCliente, editarCliente, darDeBaja, darDeAlta, cambiarCuota } from '../controllers/usuarioController.js';
+import { listarClientes, verCliente, crearCliente, editarCliente, darDeBaja, darDeAlta, cambiarCuota, obtenerMiPerfil } from '../controllers/usuarioController.js';
 
 const router = express.Router();
 
@@ -32,6 +32,8 @@ const router = express.Router();
  *                 $ref: '#/components/schemas/Cliente'
  */
 router.get('/', verificarToken, verificarRol('admin', 'entrenador'), listarClientes);
+
+router.get('/perfil', verificarToken, verificarRol('cliente'), obtenerMiPerfil);
 
 /**
  * @swagger

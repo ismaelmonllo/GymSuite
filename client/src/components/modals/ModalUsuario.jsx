@@ -98,10 +98,12 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
   // resultado: { exito: bool, mensaje: string, datos: obj } — abre ModalResultado cuando no es null
   const [resultado, setResultado] = useState(null)
 
-  // Cargar las cuotas disponibles para el select de alta de cliente
+  // Cargar cuotas solo al crear un usuario (el select solo aparece al crear cliente)
   useEffect(() => {
-    api.get('/api/cuotas').then(res => setCuotas(res.data.cuotas)).catch(() => {})
-  }, [])
+    if (esCrear) {
+      api.get('/api/cuotas').then(res => setCuotas(res.data.cuotas)).catch(() => {})
+    }
+  }, [esCrear])
 
   // Actualizar campo y limpiar su error al escribir
   const actualizarCampo = (campo, valor) => {

@@ -12,29 +12,35 @@ import { useAuth } from '../../hooks/useAuth'
 const formatearFecha = (fecha) => new Date(String(fecha).slice(0, 10) + 'T00:00:00').toLocaleDateString('es-ES')
 
 // Historial de mediciones de un cliente: tabla en desktop, cards en móvil
-function ModalMedicionesHistorial({ cliente, onClose }) {
+// soloLectura: modo cliente — usa /api/mediciones y oculta botones de empleado
+// medicionesIniciales: si se pasan, se usan directamente sin hacer fetch (evita doble carga)
+function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, medicionesIniciales = null }) {
   const { usuario } = useAuth()
   const esEmpleado = usuario.rol === 'admin' || usuario.rol === 'entrenador'
 
-  const [mediciones, setMediciones]           = useState([])
-  const [cargando, setCargando]               = useState(true)
+  const [mediciones, setMediciones]           = useState(medicionesIniciales ?? [])
+  const [cargando, setCargando]               = useState(medicionesIniciales === null)
   const [confirmandoBorrar, setConfirmandoBorrar] = useState(null)  // medicion seleccionada para borrar
   const [borrando, setBorrando]               = useState(false)
   const [resultado, setResultado]             = useState(null)
 
-  // Estados para ModalMedicionCompleto (pendiente de implementar)
   const [medicionSeleccionada, setMedicionSeleccionada] = useState(null)
   const [modoModal, setModoModal]             = useState(null)  // 'ver' | 'editar' | 'nueva'
 
-  // Cargar historial de mediciones del cliente al abrir
+  // Cargar historial: ruta propia del cliente o ruta de empleado según el modo
+  // Si ya se pasaron medicionesIniciales (modo cliente desde el dashboard), se salta el fetch
   useEffect(() => {
-    api.get(`/api/mediciones/cliente/${cliente._id}`)
+    if (medicionesIniciales !== null) return
+    const endpoint = soloLectura
+      ? '/api/mediciones'
+      : `/api/mediciones/cliente/${cliente._id}`
+    api.get(endpoint)
       .then(res => setMediciones(res.data))
       .catch(err => {
         if (err.response?.status !== 404) console.error('Error cargando mediciones:', err)
       })
       .finally(() => setCargando(false))
-  }, [cliente._id])
+  }, [cliente._id, soloLectura])
 
   // Eliminar medición y actualizar la lista localmente
   const borrarMedicion = async () => {
@@ -64,9 +70,9 @@ function ModalMedicionesHistorial({ cliente, onClose }) {
     setModoModal('editar')
   }
 
-  // Abrir ModalMedicionCompleto en modo nueva
+  // Abrir ModalMedicionCompleto en modo nueva; pasa la última medición para usarla como placeholder
   const abrirNueva = () => {
-    setMedicionSeleccionada(null)
+    setMedicionSeleccionada(mediciones[0] ?? null)
     setModoModal('nueva')
   }
 
