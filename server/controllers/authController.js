@@ -39,7 +39,7 @@ const emitirTokens = (usuario, res) => {
 export const login = async (req, res) => {
     
     try {
-        const { correo, contrasena } = req.body;
+        const { correo, contrasena, tab } = req.body;
 
         // Validar formato de los datos antes de consultar la base de datos
         const { valido, errores } = validarLogin({ correo, contrasena });
@@ -52,6 +52,25 @@ export const login = async (req, res) => {
         // Comparar la contraseña recibida con el hash almacenado en la base de datos
         const coincide = await bcrypt.compare(contrasena, usuario.contrasena);
         if (!coincide) return res.status(401).json({ mensaje: 'Credenciales incorrectas' });
+
+        // Validar que el rol del usuario corresponde a la pestaña desde la que intenta entrar
+        const rolValido =
+            tab === 'cliente' ? usuario.rol === 'cliente' :
+            tab === 'trabajador' ? usuario.rol === 'admin' || usuario.rol === 'entrenador' :
+            false;
+        if (!rolValido) {
+            return res.status(403).json({
+                mensaje: tab === 'cliente'
+                    ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
+                    : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.',
+            });
+        }
+
+        // Si 2FA está desactivado por variable de entorno (solo para desarrollo), emitir tokens directamente
+        if (process.env.DISABLE_2FA === 'true') {
+            const token = emitirTokens(usuario, res);
+            return res.status(200).json({ token });
+        }
 
         // Si el dispositivo ya verificó 2FA en los últimos 30 días, emitir tokens directamente
         if (req.cookies?.['2fa_verificado']) {

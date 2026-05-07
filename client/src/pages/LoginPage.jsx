@@ -77,7 +77,7 @@ function LoginPage() {
     setError('')
     setCargando(true)
     try {
-      const { data } = await api.post('/api/auth/login', { correo, contrasena })
+      const { data } = await api.post('/api/auth/login', { correo, contrasena, tab })
 
       if (data.requiere2FA) {
         // El servidor ha enviado un código OTP al correo del usuario; guardamos el correo
