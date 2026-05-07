@@ -267,7 +267,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
       <div className="flex flex-col gap-3">
         <h3 className={`text-sm font-semibold ${color.textoAcento2}`}>Datos generales</h3>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <CampoFormulario label="Fecha">
+          <CampoFormulario label="Fecha" className="col-span-2 sm:col-span-1">
             <input
               type="date"
               value={form.fecha}
