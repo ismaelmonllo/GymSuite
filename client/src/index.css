@@ -5,6 +5,8 @@ input[type="date"] {
   -webkit-appearance: textfield;
   -moz-appearance: textfield;
   min-height: 1.2em;
+  /* min-width: 0 anula el mínimo intrínseco que Safari/iOS impone en inputs de fecha */
+  min-width: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;

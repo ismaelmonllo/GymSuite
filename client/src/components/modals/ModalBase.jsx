@@ -28,7 +28,7 @@ function ModalBase({ titulo, onClose, ancho = 'max-w-xl', children }) {
         </div>
 
         {/* Contenido */}
-        <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
+        <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto overflow-x-hidden">
           {children}
         </div>
 
