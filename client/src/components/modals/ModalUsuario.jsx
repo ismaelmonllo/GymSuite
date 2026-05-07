@@ -269,7 +269,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
         {/* Fecha de alta — siempre deshabilitada, no aparece en modo crear */}
         {!esCrear && (
           <CampoFormulario label="Fecha de alta">
-            <input className={inputClass(true)} disabled value={usuario.fecha_alta ? new Date(usuario.fecha_alta).toLocaleDateString('es-ES') : '—'} />
+            <input className={inputClass(true)} disabled type="date" value={usuario.fecha_alta?.slice(0, 10) ?? ''} />
           </CampoFormulario>
         )}
 
