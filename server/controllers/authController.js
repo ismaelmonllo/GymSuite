@@ -53,6 +53,13 @@ export const login = async (req, res) => {
         const coincide = await bcrypt.compare(contrasena, usuario.contrasena);
         if (!coincide) return res.status(401).json({ mensaje: 'Credenciales incorrectas' });
 
+        // Si 2FA está desactivado por variable de entorno (solo para desarrollo), emitir tokens directamente
+        // En este modo el frontend sigue validando la pestaña en completarLogin
+        if (process.env.DISABLE_2FA === 'true') {
+            const token = emitirTokens(usuario, res);
+            return res.status(200).json({ token });
+        }
+
         // Validar que el rol del usuario corresponde a la pestaña desde la que intenta entrar
         const rolValido =
             tab === 'cliente' ? usuario.rol === 'cliente' :
@@ -64,12 +71,6 @@ export const login = async (req, res) => {
                     ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
                     : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.',
             });
-        }
-
-        // Si 2FA está desactivado por variable de entorno (solo para desarrollo), emitir tokens directamente
-        if (process.env.DISABLE_2FA === 'true') {
-            const token = emitirTokens(usuario, res);
-            return res.status(200).json({ token });
         }
 
         // Si el dispositivo ya verificó 2FA en los últimos 30 días, emitir tokens directamente
