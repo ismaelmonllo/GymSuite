@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalConfirmacion from './ModalConfirmacion'
@@ -162,16 +162,16 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   const previo    = esNueva && medicion ? formDesdeMedicion(medicion) : null
   const imcPrevio = previo ? calcularIMC(previo.peso, previo.altura) : null
 
-  // Recalcular % grasa automáticamente cuando cambian los pliegues
-  useEffect(() => {
-    if (!camposActivos) return
-    const resultado = calcularPorcentajeGrasa(form, cliente.sexo, cliente.fecha_nacimiento)
-    setForm(prev => ({ ...prev, porcentaje_grasa: resultado !== null ? String(resultado) : '' }))
-  }, [form.biceps, form.triceps, form.subescapular, form.cresta_iliaca, camposActivos])
-
-  // Actualizar un campo del formulario y limpiar su error si lo tenía
+  // Actualizar un campo del formulario; si es un pliegue, recalcular % grasa en el mismo setState
   const actualizarCampo = (campo, valor) => {
-    setForm(prev => ({ ...prev, [campo]: valor }))
+    setForm(prev => {
+      const nuevo = { ...prev, [campo]: valor }
+      if (['biceps', 'triceps', 'subescapular', 'cresta_iliaca'].includes(campo)) {
+        const grasa = calcularPorcentajeGrasa(nuevo, cliente.sexo, cliente.fecha_nacimiento)
+        nuevo.porcentaje_grasa = grasa !== null ? String(grasa) : ''
+      }
+      return nuevo
+    })
     if (errores[campo]) setErrores(prev => ({ ...prev, [campo]: null }))
   }
 
