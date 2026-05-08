@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { User, CreditCard, Activity, Eye } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Badge from '../components/ui/Badge'
+import CardDashboard from '../components/dashboard/CardDashboard'
 import ModalUsuario from '../components/modals/ModalUsuario'
 import ModalPagos from '../components/modals/ModalPagos'
 import ModalMedicionesHistorial from '../components/modals/ModalMedicionesHistorial'
 import ModalMedicionCompleto from '../components/modals/ModalMedicionCompleto'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
-import { color, s } from '../styles'
-import { formatearFecha, formatearImporte } from '../utils'
+import { color } from '../styles'
+import { formatearFecha } from '../utils'
 
 // Formatear fecha_alta como "Cliente desde Oct. 2020"
 const formatearDesde = (fecha) => {
@@ -72,6 +73,18 @@ function ClienteDashboard() {
   // Último pago confirmado para mostrar su fecha
   const ultimoPagoConfirmado = pagos.find(pago => !pago.pendiente)
 
+  // Mes más alto entre pagos confirmados; indica hasta cuándo está cubierta la cuota actual
+  const mesesPagados = pagos.filter(pago => !pago.pendiente).map(pago => pago.mes)
+  const mesVencimiento = mesesPagados.length ? mesesPagados.sort().at(-1) : null
+
+  // Convertir "YYYY-MM" en el último día de ese mes (ej. "2026-05" → 31/5/2026)
+  // Usar día 0 del mes siguiente para obtener el último día del mes indicado
+  const calcularUltimoDia = (mes) => {
+    if (!mes) return null
+    const [anio, m] = mes.split('-').map(Number)
+    return new Date(anio, m, 0)
+  }
+
   // Última y penúltima medición para calcular deltas
   const ultimaMedicion    = mediciones[0] ?? null
   const penultimaMedicion = mediciones[1] ?? null
@@ -100,14 +113,7 @@ function ClienteDashboard() {
         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
 
           {/* Card Perfil */}
-          <button
-            onClick={() => setModalPerfilAbierto(true)}
-            className={`${s.card} rounded-xl p-6 text-left hover:border-orange-600 transition-colors`}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <User size={18} className={color.textoAcento} />
-              <span className={`${color.textoAcento} font-semibold text-sm uppercase tracking-wide`}>Perfil</span>
-            </div>
+          <CardDashboard icono={User} titulo="Perfil" onClick={() => setModalPerfilAbierto(true)}>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`${color.texto} font-semibold`}>
@@ -117,26 +123,11 @@ function ClienteDashboard() {
               </div>
               <span className={`${color.textoApagado} text-sm`}>{perfil?.correo}</span>
               <span className={`${color.textoApagado} text-sm`}>{perfil?.telefono ?? '—'}</span>
-              {perfil?.tipo_cuota && (
-                <span className={`${color.texto} text-sm mt-1`}>
-                  Cuota:{' '}
-                  <span className={color.textoAcento2}>
-                    {perfil.tipo_cuota.nombre} · {perfil.tipo_cuota.meses} {perfil.tipo_cuota.meses === 1 ? 'mes' : 'meses'} · {formatearImporte(perfil.tipo_cuota.importe)}
-                  </span>
-                </span>
-              )}
             </div>
-          </button>
+          </CardDashboard>
 
           {/* Card Pagos */}
-          <button
-            onClick={() => setModalPagos(true)}
-            className={`${s.card} rounded-xl p-6 text-left hover:border-orange-600 transition-colors`}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <CreditCard size={18} className={color.textoAcento} />
-              <span className={`${color.textoAcento} font-semibold text-sm uppercase tracking-wide`}>Pagos</span>
-            </div>
+          <CardDashboard icono={CreditCard} titulo="Pagos" onClick={() => setModalPagos(true)}>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`${color.textoApagado} text-sm`}>Estado</span>
@@ -147,22 +138,20 @@ function ClienteDashboard() {
               <span className={`${color.textoApagado} text-sm`}>
                 Último pago: {ultimoPagoConfirmado ? formatearFecha(ultimoPagoConfirmado.fecha) : '—'}
               </span>
+              <span className={`${color.textoApagado} text-sm`}>
+                Cubierto hasta: {formatearFecha(calcularUltimoDia(mesVencimiento))}
+              </span>
             </div>
-          </button>
+          </CardDashboard>
 
           {/* Card Mediciones — centrada en desktop */}
-          <div className="sm:col-span-2 flex justify-center">
-            <div
-              role="button"
-              tabIndex={0}
+          <div className="sm:col-span-2 flex justify-center w-full">
+            <CardDashboard
+              icono={Activity}
+              titulo="Mediciones"
               onClick={() => setModalMediciones(true)}
-              onKeyDown={e => e.key === 'Enter' && setModalMediciones(true)}
-              className={`${s.card} rounded-xl p-6 text-left hover:border-orange-600 transition-colors w-full sm:max-w-sm cursor-pointer`}
+              className="w-full sm:max-w-sm"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Activity size={18} className={color.textoAcento} />
-                <span className={`${color.textoAcento} font-semibold text-sm uppercase tracking-wide`}>Mediciones</span>
-              </div>
               {!ultimaMedicion ? (
                 <span className={`${color.textoApagado} text-sm`}>Sin mediciones registradas</span>
               ) : (
@@ -203,7 +192,7 @@ function ClienteDashboard() {
                   </div>
                 </div>
               )}
-            </div>
+            </CardDashboard>
           </div>
 
         </div>
