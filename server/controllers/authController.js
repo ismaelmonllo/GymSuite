@@ -1,6 +1,8 @@
 import User from '../models/UsuarioModel.js';
+import Otp from '../models/OtpModel.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { validarLogin, validarCambioContrasenaPropio } from '../validators/validarRegistros.js';
 import { sendMail } from '../utils/mailer.js';
 import { generarPasswordTemporal } from '../utils/passwords.js';
@@ -13,16 +15,20 @@ const cookieOpciones = {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
 };
 
-// Almacenamiento temporal de OTPs en memoria: clave = correo, valor = { codigo, expira }
-const otpStore = new Map();
-
-// Generar código OTP numérico de 6 dígitos
-const generarOTP = () => String(Math.floor(100000 + Math.random() * 900000));
+// Generar código OTP numérico de 6 dígitos usando un PRNG criptográficamente seguro
+// crypto.randomInt evita patrones predecibles de Math.random
+const generarOTP = () => String(crypto.randomInt(100000, 1000000));
 
 // Emitir JWT de acceso (2h) y refresh token en cookie httpOnly (7d)
 const emitirTokens = (usuario, res) => {
     const userToken = jwt.sign(
-        { id: usuario._id, rol: usuario.rol, nombre: usuario.nombre, apellidos: usuario.apellidos },
+        {
+            id: usuario._id,
+            rol: usuario.rol,
+            nombre: usuario.nombre,
+            apellidos: usuario.apellidos,
+            forzar_cambio_password: !!usuario.forzar_cambio_password,
+        },
         process.env.JWT_SECRET,
         { expiresIn: '2h' }
     );
@@ -79,9 +85,11 @@ export const login = async (req, res) => {
             return res.status(200).json({ token });
         }
 
-        // Generar OTP, guardarlo en memoria con 5 minutos de expiración y enviarlo por email
+        // Generar OTP, guardarlo en BD con 5 minutos de expiración y enviarlo por email
+        // findOneAndUpdate con upsert sobrescribe cualquier OTP previo del mismo correo
         const codigo = generarOTP();
-        otpStore.set(correo, { codigo, expira: Date.now() + 5 * 60 * 1000 });
+        const expira = new Date(Date.now() + 5 * 60 * 1000);
+        await Otp.findOneAndUpdate({ correo }, { codigo, expira }, { upsert: true });
 
         await sendMail({
             to: correo,
@@ -106,22 +114,22 @@ export const verificar2FA = async (req, res) => {
         const { correo, codigo } = req.body;
         if (!correo || !codigo) return res.status(400).json({ mensaje: 'Faltan datos' });
 
-        const entrada = otpStore.get(correo);
+        const entrada = await Otp.findOne({ correo });
 
         // Comprobar que existe un OTP pendiente para este correo
         if (!entrada) return res.status(401).json({ mensaje: 'Código no encontrado o ya usado' });
 
-        // Comprobar si el OTP ha expirado
-        if (Date.now() > entrada.expira) {
-            otpStore.delete(correo);
+        // Comprobar si el OTP ha expirado (defensa adicional al índice TTL, que puede tardar segundos)
+        if (Date.now() > entrada.expira.getTime()) {
+            await Otp.deleteOne({ correo });
             return res.status(401).json({ mensaje: 'Código expirado' });
         }
 
         // Comprobar que el código coincide
         if (entrada.codigo !== codigo) return res.status(401).json({ mensaje: 'Código incorrecto' });
 
-        // OTP válido: eliminar de memoria para que no pueda reutilizarse
-        otpStore.delete(correo);
+        // OTP válido: eliminar de BD para que no pueda reutilizarse
+        await Otp.deleteOne({ correo });
 
         const usuario = await User.findOne({ correo });
         if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
@@ -161,7 +169,13 @@ export const refresh = async (req, res) => {
         if (!usuario) return res.status(401).json({ mensaje: 'Usuario no encontrado' });
 
         const userToken = jwt.sign(
-            { id: usuario._id, rol: usuario.rol, nombre: usuario.nombre, apellidos: usuario.apellidos },
+            {
+                id: usuario._id,
+                rol: usuario.rol,
+                nombre: usuario.nombre,
+                apellidos: usuario.apellidos,
+                forzar_cambio_password: !!usuario.forzar_cambio_password,
+            },
             process.env.JWT_SECRET,
             { expiresIn: '2h' }
         );
@@ -188,16 +202,24 @@ export const cambiarContrasena = async (req, res) => {
         const coincide = await bcrypt.compare(contrasenaActual, usuario.contrasena);
         if (!coincide) return res.status(401).json({ mensaje: 'La contraseña actual no es correcta' });
 
+        // Cambiar la contraseña y desactivar el flag de cambio forzoso (si lo tenía activo por alta o reseteo)
+        // Emitimos un token nuevo con el flag actualizado para que el frontend pueda continuar sin reloguear
         const hash = await bcrypt.hash(contrasenaNueva, 10);
-        await User.findByIdAndUpdate(req.usuario.id, { contrasena: hash });
+        const usuarioActualizado = await User.findByIdAndUpdate(
+            req.usuario.id,
+            { contrasena: hash, forzar_cambio_password: false },
+            { new: true }
+        );
 
-        return res.status(200).json({ ok: true });
+        const token = emitirTokens(usuarioActualizado, res);
+        return res.status(200).json({ ok: true, token });
     } catch (error) {
         res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
     }
 };
 
 // Resetear contraseña: generar una temporal, actualizarla en BD y enviarla al usuario por email
+// Activa el flag de cambio forzoso para que el usuario tenga que cambiarla en su próximo login
 export const resetearPassword = async (req, res) => {
     try {
         const usuario = await User.findById(req.params.id);
@@ -205,7 +227,7 @@ export const resetearPassword = async (req, res) => {
 
         const passwordTemporal = generarPasswordTemporal();
         const hash = await bcrypt.hash(passwordTemporal, 10);
-        await User.findByIdAndUpdate(req.params.id, { contrasena: hash });
+        await User.findByIdAndUpdate(req.params.id, { contrasena: hash, forzar_cambio_password: true });
 
         await sendMail({
             to: usuario.correo,
@@ -215,7 +237,7 @@ export const resetearPassword = async (req, res) => {
                 <p>Un administrador ha restablecido tu contraseña en GymSuite.</p>
                 <p>Tu contraseña temporal es:</p>
                 <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
-                <p>Por seguridad, te recomendamos cambiarla desde tu perfil en cuanto inicies sesión.</p>
+                <p>Por seguridad, deberás cambiarla nada más iniciar sesión.</p>
             `,
         });
 

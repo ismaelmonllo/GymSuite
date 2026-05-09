@@ -17,6 +17,8 @@ const usuarioSchema = new mongoose.Schema({
     fecha_alta: { type: Date, required: true, default: Date.now },
     activo: { type: Boolean, required: true, default: true },
     tipo_cuota: { type: mongoose.Schema.Types.ObjectId, ref: 'TipoCuota' }, // solo cliente
+    // Marca true tras un alta o reseteo: el usuario debe cambiar la contraseña temporal en su próximo login
+    forzar_cambio_password: { type: Boolean, default: false },
 })
 
 export default mongoose.model('Usuario', usuarioSchema);

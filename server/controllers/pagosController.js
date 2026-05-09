@@ -96,7 +96,10 @@ export const generarPagos = async (req, res) => {
 
             clientesProcesados++;
             const { meses, importe, nombre } = cliente.tipo_cuota;
-            const importeMensual = Math.round((importe / meses) * 100) / 100;
+            // Reparto exacto en céntimos: división entera + resto al último mes
+            // Ej. 10000 céntimos / 3 meses → 3333, 3333, 3334 (suman 10000 exacto)
+            const importeBase = Math.floor(importe / meses);
+            const resto = importe - importeBase * meses;
             const grupoPago = new mongoose.Types.ObjectId();
 
             for (let i = 0; i < meses; i++) {
@@ -104,7 +107,7 @@ export const generarPagos = async (req, res) => {
                     cliente_id: cliente._id,
                     mes: formatearMes(sumarMeses(ahora, i)),
                     tipo_cuota: nombre,
-                    importe: importeMensual,
+                    importe: i === meses - 1 ? importeBase + resto : importeBase,
                     pendiente: true,
                     grupo_pago: grupoPago,
                 });

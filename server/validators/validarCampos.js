@@ -283,8 +283,8 @@ export const validarNivel = (nivel) => {
 // ─── NÚMEROS ─────────────────────────────────────────────────────────────────
 
 /**
- * Valida que el importe sea un número positivo con máximo 2 decimales.
- * Usado en TipoCuota y Pago.
+ * Valida que el importe sea un número entero positivo (en céntimos).
+ * Usado en TipoCuota y Pago. El frontend convierte euros → céntimos antes de enviar.
  * @param {number} importe
  * @returns {{ valido: boolean, error: string }}
  */
@@ -295,12 +295,11 @@ export const validarImporte = (importe) => {
     if (typeof importe !== 'number' || isNaN(importe))
         return { valido: false, error: 'El importe debe ser un número' };
 
+    if (!Number.isInteger(importe))
+        return { valido: false, error: 'El importe debe estar expresado en céntimos (entero)' };
+
     if (importe <= 0)
         return { valido: false, error: 'El importe debe ser mayor que 0' };
-
-    // Comprobamos que no tiene más de 2 decimales
-    if (Math.round(importe * 100) / 100 !== importe)
-        return { valido: false, error: 'El importe no puede tener más de 2 decimales' };
 
     return { valido: true, error: '' };
 };

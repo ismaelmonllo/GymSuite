@@ -93,10 +93,12 @@ export const crearCliente = async (req, res) => {
         const contrasenaCifrada = await bcrypt.hash(passwordTemporal, 10);
 
         // Crear el documento y guardarlo con rol fijo 'cliente'
+        // forzar_cambio_password en true para obligarle a cambiar la temporal en su primer login
         const nuevoCliente = new User({
             nombre, apellidos, correo, contrasena: contrasenaCifrada,
             telefono, direccion, fecha_nacimiento, DNI, sexo, nivel, tipo_cuota,
-            rol: 'cliente'
+            rol: 'cliente',
+            forzar_cambio_password: true,
         });
         await nuevoCliente.save();
 
@@ -108,7 +110,7 @@ export const crearCliente = async (req, res) => {
                 <p>Hola ${nombre},</p>
                 <p>Tu cuenta en GymSuite ha sido creada. Ya puedes iniciar sesión con tu correo y la siguiente contraseña temporal:</p>
                 <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
-                <p>Por seguridad, te recomendamos cambiarla desde tu perfil en cuanto inicies sesión.</p>
+                <p>Por seguridad, deberás cambiarla nada más iniciar sesión.</p>
             `,
         });
 
@@ -304,9 +306,11 @@ export const crearEmpleado = async (req, res) => {
         const contrasenaCifrada = await bcrypt.hash(passwordTemporal, 10);
 
         // Crear el documento con el rol recibido (admin o entrenador)
+        // forzar_cambio_password en true para obligarle a cambiar la temporal en su primer login
         const nuevoEmpleado = new User({
             nombre, apellidos, correo, contrasena: contrasenaCifrada,
-            telefono, direccion, fecha_nacimiento, DNI, rol
+            telefono, direccion, fecha_nacimiento, DNI, rol,
+            forzar_cambio_password: true,
         });
         await nuevoEmpleado.save();
 
@@ -318,7 +322,7 @@ export const crearEmpleado = async (req, res) => {
                 <p>Hola ${nombre},</p>
                 <p>Tu cuenta en GymSuite ha sido creada. Ya puedes iniciar sesión con tu correo y la siguiente contraseña temporal:</p>
                 <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
-                <p>Por seguridad, te recomendamos cambiarla desde tu perfil en cuanto inicies sesión.</p>
+                <p>Por seguridad, deberás cambiarla nada más iniciar sesión.</p>
             `,
         });
 
