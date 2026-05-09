@@ -4,147 +4,34 @@ import ModalBase from './ModalBase'
 import ModalConfirmacion from './ModalConfirmacion'
 import ModalResultado from './ModalResultado'
 import CampoFormulario from '../ui/CampoFormulario'
+import StepperFecha from '../ui/StepperFecha'
 import api from '../../services/api'
 import { color, s } from '../../styles'
 import { useAuth } from '../../hooks/useAuth'
-
-// Fecha de hoy en formato YYYY-MM-DD para el input date
-const hoy = () => new Date().toISOString().slice(0, 10)
-
-// Calcular IMC = peso(kg) / altura(m)²; devuelve null si los datos no son válidos
-const calcularIMC = (peso, altura) => {
-  const p = Number(peso)
-  const a = Number(altura)
-  if (!p || !a || a <= 0) return null
-  return Math.round((p / (a / 100) ** 2) * 10) / 10
-}
-
-// Constantes Durnin-Womersley (1974) por sexo y grupo de edad
-// Fórmula: densidad = a - b × log10(Σ4 pliegues); %grasa = (4.95/densidad - 4.5) × 100
-const CONSTANTES_DW = {
-  masculino: [
-    { maxEdad: 16, a: 1.1533, b: 0.0643 },
-    { maxEdad: 19, a: 1.1620, b: 0.0630 },
-    { maxEdad: 29, a: 1.1631, b: 0.0632 },
-    { maxEdad: 39, a: 1.1422, b: 0.0544 },
-    { maxEdad: 49, a: 1.1620, b: 0.0700 },
-    { maxEdad: Infinity, a: 1.1715, b: 0.0779 },
-  ],
-  femenino: [
-    { maxEdad: 16, a: 1.1369, b: 0.0598 },
-    { maxEdad: 19, a: 1.1549, b: 0.0678 },
-    { maxEdad: 29, a: 1.1599, b: 0.0717 },
-    { maxEdad: 39, a: 1.1423, b: 0.0632 },
-    { maxEdad: 49, a: 1.1333, b: 0.0612 },
-    { maxEdad: Infinity, a: 1.1339, b: 0.0645 },
-  ],
-}
-
-// Calcular % grasa con Durnin-Womersley a partir de los 4 pliegues, sexo y fecha de nacimiento
-const calcularPorcentajeGrasa = (pliegues, sexo, fechaNacimiento) => {
-  if (!sexo || !CONSTANTES_DW[sexo]) return null
-
-  const suma = ['biceps', 'triceps', 'subescapular', 'cresta_iliaca']
-    .reduce((acc, campo) => acc + Number(pliegues[campo] ?? 0), 0)
-  if (suma <= 0) return null
-
-  // Calcular edad en años; si no hay fecha de nacimiento usar 30 como estimación
-  let edad = 30
-  if (fechaNacimiento) {
-    const hoyDate = new Date()
-    const nac     = new Date(fechaNacimiento)
-    edad = hoyDate.getFullYear() - nac.getFullYear()
-    const pasoCumple = hoyDate.getMonth() > nac.getMonth() ||
-      (hoyDate.getMonth() === nac.getMonth() && hoyDate.getDate() >= nac.getDate())
-    if (!pasoCumple) edad--
-  }
-
-  const { a, b } = CONSTANTES_DW[sexo].find(fila => edad <= fila.maxEdad)
-  const densidad   = a - b * Math.log10(suma)
-  const porcentaje = (4.95 / densidad - 4.5) * 100
-  return Math.round(Math.max(0, Math.min(100, porcentaje)) * 10) / 10
-}
-
-// Definición de los campos de perímetros (cm)
-const PERIMETROS = [
-  { id: 'cuello',    label: 'Cuello' },
-  { id: 'hombros',   label: 'Hombros' },
-  { id: 'pecho_ins', label: 'Pecho ins.' },
-  { id: 'pecho_exp', label: 'Pecho exp.' },
-  { id: 'cintura',   label: 'Cintura' },
-  { id: 'cadera',    label: 'Cadera' },
-  { id: 'muslo',     label: 'Muslo' },
-  { id: 'gemelo',    label: 'Gemelo' },
-  { id: 'brazo',     label: 'Brazo' },
-  { id: 'antebrazo', label: 'Antebrazo' },
-]
-
-// Definición de los campos de pliegues (mm)
-const PLIEGUES = [
-  { id: 'biceps',        label: 'Bíceps' },
-  { id: 'triceps',       label: 'Tríceps' },
-  { id: 'subescapular',  label: 'Subescapular' },
-  { id: 'cresta_iliaca', label: 'Cresta ilíaca' },
-]
-
-// Campos obligatorios: fecha y porcentaje_grasa excluidos (auto-rellenados)
-const CAMPOS_OBLIGATORIOS = [
-  'peso', 'altura',
-  ...PERIMETROS.map(campo => campo.id),
-  ...PLIEGUES.map(campo => campo.id),
-]
-
-// Campos que deben enviarse como número (no como string)
-const CAMPOS_NUMERICOS = new Set([
-  'peso', 'altura', 'porcentaje_grasa',
-  ...PERIMETROS.map(campo => campo.id),
-  ...PLIEGUES.map(campo => campo.id),
-])
-
-// Preparar el body para la API: convertir numéricos a Number y excluir strings vacíos
-const prepararBody = (datos) =>
-  Object.fromEntries(
-    Object.entries(datos)
-      .filter(([, v]) => v !== '')
-      .map(([k, v]) => [k, CAMPOS_NUMERICOS.has(k) ? Number(v) : v])
-  )
-
-// Construir formulario vacío para nueva medición con fecha de hoy
-const formVacio = () => ({
-  fecha: hoy(), peso: '', altura: '', porcentaje_grasa: '',
-  cuello: '', hombros: '', pecho_ins: '', pecho_exp: '',
-  cintura: '', cadera: '', muslo: '', gemelo: '', brazo: '', antebrazo: '',
-  biceps: '', triceps: '', subescapular: '', cresta_iliaca: '',
-  observaciones: '',
-})
-
-// Rellenar formulario con los datos de una medición existente
-const formDesdeMedicion = (medicion) => ({
-  fecha:            medicion.fecha?.slice(0, 10) ?? hoy(),
-  peso:             String(medicion.peso            ?? ''),
-  altura:           String(medicion.altura          ?? ''),
-  porcentaje_grasa: String(medicion.porcentaje_grasa ?? ''),
-  cuello:           String(medicion.cuello           ?? ''),
-  hombros:          String(medicion.hombros          ?? ''),
-  pecho_ins:        String(medicion.pecho_ins        ?? ''),
-  pecho_exp:        String(medicion.pecho_exp        ?? ''),
-  cintura:          String(medicion.cintura          ?? ''),
-  cadera:           String(medicion.cadera           ?? ''),
-  muslo:            String(medicion.muslo            ?? ''),
-  gemelo:           String(medicion.gemelo           ?? ''),
-  brazo:            String(medicion.brazo            ?? ''),
-  antebrazo:        String(medicion.antebrazo        ?? ''),
-  biceps:           String(medicion.biceps           ?? ''),
-  triceps:          String(medicion.triceps          ?? ''),
-  subescapular:     String(medicion.subescapular     ?? ''),
-  cresta_iliaca:    String(medicion.cresta_iliaca    ?? ''),
-  observaciones:    medicion.observaciones           ?? '',
-})
+import { calcularIMC, calcularPorcentajeGrasa } from '../../utils/composicionCorporal'
+import {
+  PERIMETROS, PLIEGUES, CAMPOS_OBLIGATORIOS,
+  prepararBody, formVacio, formDesdeMedicion,
+} from '../../utils/medicion'
 
 // Modal de detalle completo de una medición: ver, editar o crear nueva
-function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose, onGuardado }) {
+// Si se pasa `mediciones` y hay más de una, en modo ver aparecen flechas para navegar cronológicamente
+function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'ver', onClose, onGuardado }) {
   const { usuario } = useAuth()
   const esEmpleado = usuario.rol === 'admin' || usuario.rol === 'entrenador'
+
+  // Hay navegación si recibimos un array con más de una medición
+  const tieneNavegacion = Array.isArray(mediciones) && mediciones.length > 1
+
+  // Índice de la medición mostrada dentro del array (0 = más reciente)
+  const [indice, setIndice] = useState(() => {
+    if (!tieneNavegacion || !medicion) return 0
+    const idx = mediciones.findIndex(item => item._id === medicion._id)
+    return idx >= 0 ? idx : 0
+  })
+
+  // Medición que se está mostrando: la del índice si hay navegación, si no la prop original
+  const medicionActual = tieneNavegacion ? mediciones[indice] : medicion
 
   const [modo, setModo]                     = useState(modoInicial)
   const [form, setForm]                     = useState(modoInicial === 'nueva' ? formVacio() : (medicion ? formDesdeMedicion(medicion) : formVacio()))
@@ -152,6 +39,15 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   const [guardando, setGuardando]           = useState(false)
   const [confirmandoGuardar, setConfirmandoGuardar] = useState(false)
   const [resultado, setResultado]           = useState(null)
+
+  // Resetear el formulario al cambiar de medición vía las flechas — patrón "adjust state during render"
+  // Detectar el cambio comparando el id mostrado anteriormente con el actual
+  const [idMostrado, setIdMostrado] = useState(medicionActual?._id ?? null)
+  if (modoInicial !== 'nueva' && medicionActual && medicionActual._id !== idMostrado) {
+    setIdMostrado(medicionActual._id)
+    setForm(formDesdeMedicion(medicionActual))
+    setErrores({})
+  }
 
   const esNueva       = modo === 'nueva'
   const esEditar      = modo === 'editar'
@@ -211,7 +107,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
         const res = await api.post('/api/mediciones', prepararBody({ ...form, cliente_id: cliente._id }))
         medicionGuardada = res.data.medicion ?? res.data
       } else {
-        const res = await api.put(`/api/mediciones/${medicion._id}`, prepararBody(form))
+        const res = await api.put(`/api/mediciones/${medicionActual._id}`, prepararBody(form))
         medicionGuardada = res.data.medicion ?? res.data
       }
       onGuardado?.(medicionGuardada)
@@ -220,6 +116,13 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
     } finally {
       setGuardando(false)
     }
+  }
+
+  // Cancelar edición: revertir el formulario a los datos originales y volver al modo ver
+  const cancelarEdicion = () => {
+    if (medicionActual) setForm(formDesdeMedicion(medicionActual))
+    setErrores({})
+    setModo('ver')
   }
 
   // Validar y decidir si pedir confirmación (editar) o guardar directamente (nueva)
@@ -235,7 +138,7 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   // Título dinámico según el modo actual
   const titulo = esNueva
     ? `Nueva medición — ${cliente.nombre} ${cliente.apellidos}`
-    : `Medición — ${form.fecha ? new Date(form.fecha + 'T00:00:00').toLocaleDateString('es-ES') : ''}`
+    : `Medición`
 
   // Input numérico reutilizable para perímetros y pliegues
   const inputNumerico = (id, placeholder) => (
@@ -252,6 +155,10 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
   return (
     <ModalBase titulo={titulo} onClose={onClose} ancho="max-w-2xl">
 
+      {/* Wrapper con display:contents para centrar todos los inputs, textareas y labels del modal */}
+      {/* contents preserva el flex/gap del padre ModalBase y solo se usa para acotar los selectores */}
+      <div className="contents [&_input]:text-center [&_label]:text-center [&_textarea]:text-center">
+
       {/* Botón nueva medición (solo empleados, no visible ya en modo nueva) */}
       {esEmpleado && !esNueva && (
         <button
@@ -263,18 +170,23 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
         </button>
       )}
 
+      {/* Campo de fecha con flechas para navegar entre mediciones por orden cronológico */}
+      {/* ← retrocede a una más antigua (índice +1, ya que [0] es la más reciente) */}
+      {/* Las flechas se desactivan en modo editar/nueva o en los extremos del array */}
+      <CampoFormulario label="Fecha" className="sm:text-center">
+        <StepperFecha
+          fecha={form.fecha}
+          puedeAnterior={esVer && tieneNavegacion && indice < mediciones.length - 1}
+          puedeSiguiente={esVer && tieneNavegacion && indice > 0}
+          onAnterior={() => setIndice(indice + 1)}
+          onSiguiente={() => setIndice(indice - 1)}
+        />
+      </CampoFormulario>
+
       {/* Sección: Datos generales */}
       <div className="flex flex-col gap-3">
         <h3 className={`text-sm font-semibold ${color.textoAcento2}`}>Datos generales</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <CampoFormulario label="Fecha" className="col-span-2 sm:col-span-1">
-            <input
-              type="date"
-              value={form.fecha}
-              disabled
-              className={`${s.input} w-full opacity-60 cursor-default`}
-            />
-          </CampoFormulario>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <CampoFormulario label="Peso (kg)" error={errores.peso}>
             {inputNumerico('peso', 'kg')}
           </CampoFormulario>
@@ -337,16 +249,26 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
           disabled={!camposActivos}
           placeholder={camposActivos ? (previo?.observaciones || 'Notas adicionales (opcional)') : ''}
           rows={3}
-          className={`${s.input} w-full resize-none disabled:opacity-60`}
+          className={`${s.input} w-full resize-none disabled:opacity-60 text-left!`}
         />
       </div>
 
       {/* Botón de acción inferior (solo empleados) */}
+      {/* En editar: Cancelar + Guardar; en nueva: solo Guardar; en ver: Editar */}
       {esEmpleado && (
         esVer ? (
           <button onClick={() => setModo('editar')} className={`w-full ${s.btnPrimary}`}>
             Editar
           </button>
+        ) : esEditar ? (
+          <div className="flex gap-3">
+            <button onClick={cancelarEdicion} disabled={guardando} className={s.btnSecundario}>
+              Cancelar
+            </button>
+            <button onClick={intentarGuardar} disabled={guardando} className={`flex-1 ${s.btnPrimary}`}>
+              {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
         ) : (
           <button onClick={intentarGuardar} disabled={guardando} className={`w-full ${s.btnPrimary}`}>
             {guardando ? 'Guardando...' : 'Guardar'}
@@ -372,6 +294,8 @@ function ModalMedicionCompleto({ cliente, medicion, modoInicial = 'ver', onClose
           onCerrar={() => setResultado(null)}
         />
       )}
+
+      </div>
 
     </ModalBase>
   )

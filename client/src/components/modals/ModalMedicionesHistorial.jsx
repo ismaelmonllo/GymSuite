@@ -223,6 +223,7 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, medic
         <ModalMedicionCompleto
           cliente={cliente}
           medicion={medicionSeleccionada}
+          mediciones={modoModal === 'ver' ? mediciones : undefined}
           modoInicial={modoModal}
           onClose={() => { setMedicionSeleccionada(null); setModoModal(null) }}
           onGuardado={(medicionActualizada) => {

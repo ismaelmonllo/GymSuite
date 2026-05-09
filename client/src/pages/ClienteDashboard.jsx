@@ -227,6 +227,7 @@ function ClienteDashboard() {
         <ModalMedicionCompleto
           cliente={perfil}
           medicion={ultimaMedicion}
+          mediciones={mediciones}
           modoInicial="ver"
           onClose={() => setModalUltimaMedicion(false)}
         />
