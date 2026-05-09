@@ -27,7 +27,8 @@ const agruparPorGrupo = (pagos) => {
 
 // Historial de pagos de un cliente: cuota actual, botones de acción e historial agrupado
 // soloLectura: modo cliente — usa /api/pagos/mis-pagos y oculta botones de empleado
-function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCambiada, soloLectura = false }) {
+// bloqueadoEdicion: empleado viendo a un cliente en baja — usa endpoint de empleado pero oculta acciones de edición
+function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCambiada, soloLectura = false, bloqueadoEdicion = false }) {
   const [pagos, setPagos]             = useState([])
   const [cargando, setCargando]       = useState(true)
   const [registrando, setRegistrando]       = useState(false)
@@ -103,8 +104,8 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
         </div>
       </div>
 
-      {/* Botones de acción — solo visibles para empleados */}
-      {!soloLectura && (
+      {/* Botones de acción — solo visibles para empleados con cliente activo */}
+      {!soloLectura && !bloqueadoEdicion && (
         <div className="flex gap-3">
           <button
             onClick={() => setModalCuota(true)}

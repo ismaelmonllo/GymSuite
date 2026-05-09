@@ -16,9 +16,10 @@ import {
 
 // Modal de detalle completo de una medición: ver, editar o crear nueva
 // Si se pasa `mediciones` y hay más de una, en modo ver aparecen flechas para navegar cronológicamente
-function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'ver', onClose, onGuardado }) {
+// bloqueadoEdicion: empleado viendo un cliente en baja — oculta botones de editar/guardar/nueva
+function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'ver', bloqueadoEdicion = false, onClose, onGuardado }) {
   const { usuario } = useAuth()
-  const esEmpleado = usuario.rol === 'admin' || usuario.rol === 'entrenador'
+  const esEmpleado = (usuario.rol === 'admin' || usuario.rol === 'entrenador') && !bloqueadoEdicion
 
   // Hay navegación si recibimos un array con más de una medición
   const tieneNavegacion = Array.isArray(mediciones) && mediciones.length > 1

@@ -360,6 +360,7 @@ function AdminDashboard() {
         <ModalUsuario
           usuario={modalUsuario.usuario ?? null}
           rolEditable={modalUsuario.rolEditable ?? false}
+          soloLectura={modalUsuario.usuario && modalUsuario.usuario.activo === false}
           onClose={() => setModalUsuario(null)}
           onGuardar={(datosRespuesta) => {
             const esEdicion = !!modalUsuario.usuario
@@ -430,6 +431,7 @@ function AdminDashboard() {
         <ModalPagos
           cliente={modalPagos}
           cuotas={cuotas}
+          bloqueadoEdicion={!modalPagos.activo}
           onClose={() => setModalPagos(null)}
           onPagoConfirmado={() => {
             // Refrescar el mapa de último pago para que el badge de la tabla se actualice

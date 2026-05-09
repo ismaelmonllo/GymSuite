@@ -25,6 +25,7 @@ function ListaUsuarios({
 }) {
 
   // Badges + botón confirmar pago para la columna/sección de último pago
+  // Si el usuario está en baja se oculta el botón de confirmar pago (solo lectura)
   const renderPago = (usuario) => {
     if (!esClientes) return null
     const pago = ultimoPago[usuario._id]
@@ -34,7 +35,7 @@ function ListaUsuarios({
           <Badge variante={pago.pendiente ? 'pendiente' : 'confirmado'}>
             {pago.pendiente ? 'Pendiente' : 'Confirmado'}
           </Badge>
-          {pago.pendiente && (
+          {pago.pendiente && usuario.activo && (
             <IconButton
               icono={CheckCircle}
               titulo="Confirmar pago"
@@ -51,11 +52,13 @@ function ListaUsuarios({
   }
 
   // Acciones comunes de cada fila/card
+  // Si el usuario está en baja se ocultan las acciones que modifican datos (cambiar cuota)
+  // Se mantienen las de solo lectura (ver perfil, pagos, mediciones) y la de dar de alta
   const renderAcciones = (usuario) => (
     <>
       <IconButton icono={User} titulo="Ver perfil" onClick={() => onVerPerfil(usuario)} />
       {esClientes && <IconButton icono={Receipt} titulo="Ver pagos" onClick={() => onVerPagos(usuario)} />}
-      {esClientes && <IconButton icono={CalendarDays} titulo="Cambiar cuota" onClick={() => onCambiarCuota(usuario)} />}
+      {esClientes && usuario.activo && <IconButton icono={CalendarDays} titulo="Cambiar cuota" onClick={() => onCambiarCuota(usuario)} />}
       {esClientes && mostrarMediciones && <IconButton icono={Ruler} titulo="Ver mediciones" onClick={() => onVerMediciones(usuario)} />}
       <IconButton
         icono={usuario.activo ? Ban : RotateCcw}

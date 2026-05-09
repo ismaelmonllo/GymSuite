@@ -13,10 +13,11 @@ const formatearFecha = (fecha) => new Date(String(fecha).slice(0, 10) + 'T00:00:
 
 // Historial de mediciones de un cliente: tabla en desktop, cards en móvil
 // soloLectura: modo cliente — usa /api/mediciones y oculta botones de empleado
+// bloqueadoEdicion: empleado viendo a un cliente en baja — endpoint de empleado pero sin acciones de edición
 // medicionesIniciales: si se pasan, se usan directamente sin hacer fetch (evita doble carga)
-function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, medicionesIniciales = null }) {
+function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqueadoEdicion = false, medicionesIniciales = null }) {
   const { usuario } = useAuth()
-  const esEmpleado = usuario.rol === 'admin' || usuario.rol === 'entrenador'
+  const esEmpleado = (usuario.rol === 'admin' || usuario.rol === 'entrenador') && !bloqueadoEdicion
 
   const [mediciones, setMediciones]           = useState(medicionesIniciales ?? [])
   const [cargando, setCargando]               = useState(medicionesIniciales === null)
@@ -225,6 +226,7 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, medic
           medicion={medicionSeleccionada}
           mediciones={modoModal === 'ver' ? mediciones : undefined}
           modoInicial={modoModal}
+          bloqueadoEdicion={bloqueadoEdicion}
           onClose={() => { setMedicionSeleccionada(null); setModoModal(null) }}
           onGuardado={(medicionActualizada) => {
             if (modoModal === 'nueva') {

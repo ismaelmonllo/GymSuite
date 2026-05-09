@@ -238,6 +238,7 @@ function EntrenadorDashboard() {
         <ModalUsuario
           usuario={modalUsuario.usuario ?? null}
           rolEditable={false}
+          soloLectura={modalUsuario.usuario && modalUsuario.usuario.activo === false}
           onClose={() => setModalUsuario(null)}
           onGuardar={(datosRespuesta) => {
             const esEdicion = !!modalUsuario.usuario
@@ -283,6 +284,7 @@ function EntrenadorDashboard() {
         <ModalPagos
           cliente={modalPagos}
           cuotas={cuotas}
+          bloqueadoEdicion={!modalPagos.activo}
           onClose={() => setModalPagos(null)}
           onPagoConfirmado={() => {
             api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
@@ -299,6 +301,7 @@ function EntrenadorDashboard() {
       {modalMediciones && (
         <ModalMedicionesHistorial
           cliente={modalMediciones}
+          bloqueadoEdicion={!modalMediciones.activo}
           onClose={() => setModalMediciones(null)}
         />
       )}
