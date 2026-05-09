@@ -3,9 +3,13 @@ import ModalBase from './ModalBase'
 import ValidacionContrasena from '../ui/ValidacionContrasena'
 import api from '../../services/api'
 import { color, s } from '../../styles'
+import { useAuth } from '../../hooks/useAuth'
 
 // Modal para que el usuario autenticado cambie su propia contraseña
-function ModalCambiarContrasena({ onClose }) {
+// forzado=true se usa tras un alta o reseteo: no se puede cerrar y no muestra botón Cancelar
+function ModalCambiarContrasena({ onClose, forzado = false }) {
+  const { actualizarToken } = useAuth()
+
   const [contrasenaActual, setContrasenaActual] = useState('')
   const [nuevaContrasena, setNuevaContrasena]   = useState('')
   const [repetir, setRepetir]                   = useState('')
@@ -28,7 +32,9 @@ function ModalCambiarContrasena({ onClose }) {
     setError('')
     setGuardando(true)
     try {
-      await api.patch('/api/auth/cambiar-contrasena', { contrasenaActual, contrasenaNueva: nuevaContrasena })
+      // El backend devuelve un token nuevo con forzar_cambio_password = false; lo aplicamos para refrescar la sesión
+      const { data } = await api.patch('/api/auth/cambiar-contrasena', { contrasenaActual, contrasenaNueva: nuevaContrasena })
+      if (data?.token) actualizarToken(data.token)
       setExito(true)
     } catch (err) {
       const data = err.response?.data
@@ -39,18 +45,26 @@ function ModalCambiarContrasena({ onClose }) {
     }
   }
 
+  // Tras éxito: en modo forzado el modal se desmonta automáticamente desde el padre (App.jsx)
+  // al refrescar el token sin la flag, por lo que no necesita botón "Cerrar" propio
   if (exito) {
     return (
-      <ModalBase titulo="Cambiar contraseña" onClose={onClose}>
+      <ModalBase titulo="Cambiar contraseña" onClose={onClose} cerrable={!forzado}>
         <p className="text-sm text-green-400">✓ Contraseña cambiada correctamente.</p>
-        <button onClick={onClose} className={s.btnPrimary}>Cerrar</button>
+        {!forzado && <button onClick={onClose} className={s.btnPrimary}>Cerrar</button>}
       </ModalBase>
     )
   }
 
   return (
-    <ModalBase titulo="Cambiar contraseña" onClose={onClose}>
+    <ModalBase titulo="Cambiar contraseña" onClose={onClose} cerrable={!forzado}>
       <div className="flex flex-col gap-4">
+
+        {forzado && (
+          <p className={`text-sm ${color.texto}`}>
+            Por seguridad debes cambiar tu contraseña temporal antes de continuar.
+          </p>
+        )}
 
         <div className={s.fieldGroup}>
           <label className={s.label}>Contraseña actual</label>
@@ -89,7 +103,7 @@ function ModalCambiarContrasena({ onClose }) {
         {error && <p className={`text-sm ${color.error}`}>{error}</p>}
 
         <div className="flex gap-3">
-          <button onClick={onClose} className={s.btnSecundario}>Cancelar</button>
+          {!forzado && <button onClick={onClose} className={s.btnSecundario}>Cancelar</button>}
           <button onClick={guardar} disabled={guardando} className={`flex-1 ${s.btnPrimary}`}>
             {guardando ? 'Guardando...' : 'Guardar'}
           </button>

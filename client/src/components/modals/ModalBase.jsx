@@ -3,14 +3,15 @@ import { color, s } from '../../styles'
 
 // Carcasa reutilizable para todos los modales: overlay + card centrada + cabecera con título y cierre
 // ancho acepta cualquier clase max-w-* de Tailwind; por defecto max-w-xl
-function ModalBase({ titulo, onClose, ancho = 'max-w-xl', children }) {
+// cerrable=false oculta la X y desactiva el cierre por overlay (modales obligatorios, ej. cambio forzoso de contraseña)
+function ModalBase({ titulo, onClose, ancho = 'max-w-xl', cerrable = true, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
 
-      {/* Overlay oscuro */}
+      {/* Overlay oscuro: solo cierra si el modal es cerrable */}
       <div
         className="absolute inset-0 bg-black/60"
-        onClick={onClose}
+        onClick={cerrable ? onClose : undefined}
       />
 
       {/* Card del modal */}
@@ -19,12 +20,14 @@ function ModalBase({ titulo, onClose, ancho = 'max-w-xl', children }) {
         {/* Cabecera */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${color.bordeHeader} shrink-0`}>
           <h2 className={`text-lg font-semibold ${color.texto}`}>{titulo}</h2>
-          <button
-            onClick={onClose}
-            className={`${color.textoApagado} hover:${color.texto} transition-colors`}
-          >
-            <X size={20} />
-          </button>
+          {cerrable && (
+            <button
+              onClick={onClose}
+              className={`${color.textoApagado} hover:${color.texto} transition-colors`}
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Contenido */}

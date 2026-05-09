@@ -40,6 +40,14 @@ export function AuthProvider({ children }) {
     setUsuario(datos)
   }
 
+  // Sustituir el token actual por uno nuevo sin reloguear (usado tras cambiar la contraseña forzosa)
+  // El nuevo token trae forzar_cambio_password = false, lo que cierra el modal forzado
+  const actualizarToken = (nuevoToken) => {
+    if (!nuevoToken) return
+    document.cookie = `token=${nuevoToken}; path=/; max-age=${2 * 60 * 60}; SameSite=Strict`
+    setUsuario({ ...decodificarToken(nuevoToken), token: nuevoToken })
+  }
+
   // Cerrar sesión: pedir al servidor que limpie la cookie del refresh token, luego limpiar estado local
   const logout = async () => {
     try { await api.post('/api/auth/logout') } catch { /* ignorar si ya expiró */ }
@@ -47,7 +55,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, login, logout }}>
+    <AuthContext.Provider value={{ usuario, login, logout, actualizarToken }}>
       {children}
     </AuthContext.Provider>
   )

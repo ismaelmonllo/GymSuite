@@ -6,6 +6,7 @@ import ModalResultado from './ModalResultado'
 import ModalConfirmarPago from './ModalConfirmarPago'
 import api from '../../services/api'
 import { color } from '../../styles'
+import { formatearImporte } from '../../utils'
 
 // Icono según si el pago está confirmado o pendiente
 const iconoPago = (pendiente) =>
@@ -92,7 +93,7 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
         </div>
         <div className={`flex-1 min-w-0 px-4 py-3 flex flex-col gap-0.5 border-r ${color.borde}`}>
           <span className={color.textoApagado}>Importe</span>
-          <span className={`font-medium ${color.texto}`}>{cuotaActual ? `${cuotaActual.importe} €` : '—'}</span>
+          <span className={`font-medium ${color.texto}`}>{cuotaActual ? formatearImporte(cuotaActual.importe) : '—'}</span>
         </div>
         <div className="flex-1 min-w-0 px-4 py-3 flex flex-col gap-0.5">
           <span className={color.textoApagado}>Estado</span>
@@ -150,7 +151,7 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
                       {iconoPago(pago.pendiente)}
                       <span className={`font-medium ${color.texto}`}>{pago.mes}</span>
                     </div>
-                    <span className={`shrink-0 font-medium ${color.texto}`}>{pago.importe} €</span>
+                    <span className={`shrink-0 font-medium ${color.texto}`}>{formatearImporte(pago.importe)}</span>
                   </div>
                   {/* Línea 2: tipo cuota — estado */}
                   <div className="flex items-center justify-between gap-2 mt-1">

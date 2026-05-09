@@ -5,6 +5,7 @@ import ModalConfirmacion from './ModalConfirmacion'
 import ModalResultado from './ModalResultado'
 import api from '../../services/api'
 import { color, s } from '../../styles'
+import { centimosAEuros, eurosACentimos } from '../../utils'
 
 // Cargar cuotas existentes, permitir edición inline, añadir nuevas y borrar
 function ModalGestionCuotas({ onClose }) {
@@ -19,10 +20,14 @@ function ModalGestionCuotas({ onClose }) {
   const listaRef = useRef(null)
 
   // Cargar cuotas al abrir el modal; guardar también una copia original para detectar cambios al guardar
+  // Importes vienen del backend en céntimos: convertimos a euros para mostrar en el input al usuario
   useEffect(() => {
     api.get('/api/cuotas')
       .then(res => {
-        const data = res.data.cuotas ?? []
+        const data = (res.data.cuotas ?? []).map(cuota => ({
+          ...cuota,
+          importe: String(centimosAEuros(cuota.importe)),
+        }))
         setCuotas(data)
         setCuotasOriginales(data)
       })
@@ -95,6 +100,13 @@ function ModalGestionCuotas({ onClose }) {
         return JSON.stringify(cuota) !== JSON.stringify(original)
       })
 
+      // Convertir importe de euros (string que escribe el usuario) a céntimos (entero) para enviar al backend
+      const aPayload = (cuota) => ({
+        ...cuota,
+        importe: eurosACentimos(cuota.importe),
+        meses: Number(cuota.meses),
+      })
+
       // Construir lista de operaciones etiquetadas para poder informar del resultado individualmente
       const operaciones = [
         ...eliminadas.map(cuota => ({
@@ -104,8 +116,8 @@ function ModalGestionCuotas({ onClose }) {
         ...aGuardar.map(cuota => ({
           label: cuota._id ? `Editar "${cuota.nombre}"` : `Crear "${cuota.nombre}"`,
           promesa: cuota._id
-            ? api.put(`/api/cuotas/${cuota._id}`, cuota)
-            : api.post('/api/cuotas', cuota)
+            ? api.put(`/api/cuotas/${cuota._id}`, aPayload(cuota))
+            : api.post('/api/cuotas', aPayload(cuota))
         }))
       ]
 

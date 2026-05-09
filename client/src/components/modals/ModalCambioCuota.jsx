@@ -3,6 +3,7 @@ import ModalBase from './ModalBase'
 import ModalResultado from './ModalResultado'
 import api from '../../services/api'
 import { color, s } from '../../styles'
+import { formatearImporte } from '../../utils'
 
 // Mostrar las cuotas disponibles y permitir seleccionar una nueva para el cliente
 function ModalCambioCuota({ cliente, cuotas, onClose, onGuardar }) {
@@ -47,7 +48,7 @@ function ModalCambioCuota({ cliente, cuotas, onClose, onGuardar }) {
               <span className={`font-medium ${color.texto}`}>{cuota.nombre}</span>
               <div className={`flex gap-6 ${color.textoApagado}`}>
                 <span>{cuota.meses} {cuota.meses === 1 ? 'mes' : 'meses'}</span>
-                <span>{cuota.importe} €</span>
+                <span>{formatearImporte(cuota.importe)}</span>
               </div>
             </button>
           )

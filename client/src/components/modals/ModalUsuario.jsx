@@ -6,6 +6,7 @@ import CampoFormulario from '../ui/CampoFormulario'
 import api from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import { color, s } from '../../styles'
+import { formatearImporte } from '../../utils'
 
 // Determinar el endpoint de API según el rol
 const endpointPorRol = (rol) => {
@@ -325,7 +326,7 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
               <option value="">Seleccionar cuota</option>
               {cuotas.map(cuota => (
                 <option key={cuota._id} value={cuota._id}>
-                  {cuota.nombre} — {cuota.meses} {cuota.meses === 1 ? 'mes' : 'meses'} / {cuota.importe}€
+                  {cuota.nombre} — {cuota.meses} {cuota.meses === 1 ? 'mes' : 'meses'} / {formatearImporte(cuota.importe)}
                 </option>
               ))}
             </select>

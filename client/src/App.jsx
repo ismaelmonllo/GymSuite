@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import { useAuth } from './hooks/useAuth'
 import RutaProtegida from './components/auth/RutaProtegida'
 import RutaRol from './components/auth/RutaRol'
+import ModalCambiarContrasena from './components/modals/ModalCambiarContrasena'
 import LoginPage from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import EntrenadorDashboard from './pages/EntrenadorDashboard'
@@ -15,6 +16,15 @@ function RedireccionInicio() {
   const { usuario } = useAuth()
   if (!usuario) return <Navigate to="/login" replace />
   return <Navigate to={RUTAS_ROL[usuario.rol] ?? '/login'} replace />
+}
+
+// Bloquear cualquier vista mostrando un modal forzado de cambio de contraseña
+// Se activa si el JWT trae forzar_cambio_password=true (alta o reseteo); el modal no se puede cerrar
+// hasta que el cambio se confirma y el backend devuelva un token sin esa flag
+function ModalForzadoSiAplica() {
+  const { usuario } = useAuth()
+  if (!usuario?.forzar_cambio_password) return null
+  return <ModalCambiarContrasena forzado />
 }
 
 function App() {
@@ -38,6 +48,7 @@ function App() {
 
           <Route path="*" element={<RedireccionInicio />} />
         </Routes>
+        <ModalForzadoSiAplica />
       </BrowserRouter>
     </AuthProvider>
   )
