@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Eye, Pencil, Trash2, Plus } from 'lucide-react'
+import { Eye, Pencil, Trash2, Plus, TrendingUp } from 'lucide-react'
 import ModalBase from './ModalBase'
 import ModalConfirmacion from './ModalConfirmacion'
 import ModalResultado from './ModalResultado'
 import ModalMedicionCompleto from './ModalMedicionCompleto'
+import ModalGraficaMediciones from './ModalGraficaMediciones'
 import api from '../../services/api'
 import { color } from '../../styles'
 import { useAuth } from '../../hooks/useAuth'
@@ -27,6 +28,7 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
 
   const [medicionSeleccionada, setMedicionSeleccionada] = useState(null)
   const [modoModal, setModoModal]             = useState(null)  // 'ver' | 'editar' | 'nueva'
+  const [graficaAbierta, setGraficaAbierta]   = useState(false)
 
   // Cargar historial: ruta propia del cliente o ruta de empleado según el modo
   // Si ya se pasaron medicionesIniciales (modo cliente desde el dashboard), se salta el fetch
@@ -80,15 +82,28 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
   return (
     <ModalBase titulo={`Mediciones — ${cliente.nombre} ${cliente.apellidos}`} onClose={onClose}>
 
-      {/* Botón nueva medición (solo empleados) */}
-      {esEmpleado && (
-        <button
-          onClick={abrirNueva}
-          className="self-start flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white transition-colors"
-        >
-          <Plus size={16} />
-          Nueva medición
-        </button>
+      {/* Acciones: Ver evolución (desktop, requiere >=2 mediciones) + Nueva medición (empleados) */}
+      {(mediciones.length >= 2 || esEmpleado) && (
+        <div className="flex items-center gap-2">
+          {mediciones.length >= 2 && (
+            <button
+              onClick={() => setGraficaAbierta(true)}
+              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${color.borde} ${color.texto} ${color.bgHover} transition-colors`}
+            >
+              <TrendingUp size={16} />
+              Ver evolución
+            </button>
+          )}
+          {esEmpleado && (
+            <button
+              onClick={abrirNueva}
+              className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white transition-colors"
+            >
+              <Plus size={16} />
+              Nueva medición
+            </button>
+          )}
+        </div>
       )}
 
       {/* Contenido */}
@@ -217,6 +232,14 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
           exito={resultado.exito}
           mensaje={resultado.mensaje}
           onCerrar={() => setResultado(null)}
+        />
+      )}
+
+      {graficaAbierta && (
+        <ModalGraficaMediciones
+          titulo={`Evolución — ${cliente.nombre} ${cliente.apellidos}`}
+          mediciones={mediciones}
+          onClose={() => setGraficaAbierta(false)}
         />
       )}
 
