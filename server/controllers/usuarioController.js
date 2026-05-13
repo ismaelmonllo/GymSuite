@@ -6,6 +6,44 @@ import { validarObjectId } from '../validators/validarCampos.js';
 import { generarPasswordTemporal } from '../utils/passwords.js';
 import { sendMail } from '../utils/mailer.js';
 
+// Detectar duplicados de DNI o correo al crear un usuario.
+// El DNI solo colisiona dentro del mismo rol; el correo colisiona globalmente.
+// Devuelve:
+//   { bloqueo: { campo, mensaje } } si hay un duplicado activo o un correo perteneciente a otro rol inactivo
+//   { inactivos: [...] } con los candidatos a reactivar si los hay (uno o dos según coincidan en el mismo usuario o no)
+//   { } si no hay ningún duplicado
+const detectarDuplicadosAlCrear = async (DNI, correo, rolNuevo) => {
+    const porDni    = await User.findOne({ DNI, rol: rolNuevo });
+    const porCorreo = await User.findOne({ correo });
+
+    // Un usuario activo con el mismo DNI o correo bloquea siempre la operación
+    if (porDni?.activo)    return { bloqueo: { campo: 'DNI',    mensaje: `Ya existe un ${rolNuevo} con ese DNI.` } };
+    if (porCorreo?.activo) return { bloqueo: { campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' } };
+
+    // Si el correo pertenece a un usuario de otro rol (aunque esté inactivo) no se puede reactivar desde aquí
+    if (porCorreo && porCorreo.rol !== rolNuevo) {
+        return { bloqueo: { campo: 'correo', mensaje: `Ese correo pertenece a un ${porCorreo.rol} dado de baja. Usa otro correo.` } };
+    }
+
+    // Recoger candidatos a reactivar evitando duplicar el mismo documento si DNI y correo apuntan al mismo usuario
+    const inactivos = [];
+    if (porDni) inactivos.push(porDni);
+    if (porCorreo && (!porDni || String(porCorreo._id) !== String(porDni._id))) inactivos.push(porCorreo);
+
+    return inactivos.length > 0 ? { inactivos } : {};
+};
+
+// Reducir un usuario a los campos que se muestran en el modal de reactivación
+const proyectarInactivo = (usuario) => ({
+    _id:              usuario._id,
+    nombre:           usuario.nombre,
+    apellidos:        usuario.apellidos,
+    fecha_nacimiento: usuario.fecha_nacimiento,
+    DNI:              usuario.DNI,
+    correo:           usuario.correo,
+    rol:              usuario.rol,
+});
+
 // Obtener todos los usuarios con rol 'cliente' de la base de datos y devolverlos en la respuesta, aplicando filtros opcionales
 export const listarClientes = async (req, res) => {
 
@@ -84,10 +122,12 @@ export const crearCliente = async (req, res) => {
         const { valido, errores } = validarCrearCliente(req.body);
         if (!valido) return res.status(400).json({ errores });
 
-        // Comprobar duplicados por separado para indicar cuál campo ya existe
-        // El DNI se valida solo dentro del mismo rol: una persona puede ser cliente y empleado a la vez con cuentas distintas
-        if (await User.findOne({ DNI, rol: 'cliente' })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un cliente con ese DNI.' });
-        if (await User.findOne({ correo }))              return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        // Comprobar duplicados: bloquea si hay usuario activo en conflicto
+        // o si hay un correo que pertenece a otra cuenta de baja con rol distinto
+        // Si hay usuarios inactivos del mismo rol, devolver 409 con la lista para que el front ofrezca reactivar
+        const { bloqueo, inactivos } = await detectarDuplicadosAlCrear(DNI, correo, 'cliente');
+        if (bloqueo)   return res.status(400).json({ campo: bloqueo.campo, mensaje: bloqueo.mensaje });
+        if (inactivos) return res.status(409).json({ inactivos: inactivos.map(proyectarInactivo) });
 
         // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
         const passwordTemporal = generarPasswordTemporal();
@@ -182,14 +222,15 @@ export const darDeBaja = async (req, res) => {
 
 }
 
-// Reactivar un usuario marcando su campo 'activo' como true
+// Reactivar un usuario marcando su campo 'activo' como true y refrescando su fecha de alta
+// La fecha de alta se actualiza porque la reactivación equivale a un nuevo periodo de actividad en el gimnasio
 export const darDeAlta = async (req, res) => {
 
     try {
 
         const usuarioActualizado = await User.findByIdAndUpdate(
             req.params.id,
-            { activo: true },
+            { activo: true, fecha_alta: new Date() },
             { new: true }
         );
 
@@ -299,10 +340,12 @@ export const crearEmpleado = async (req, res) => {
         const { valido, errores } = validarCrearTrabajador(req.body);
         if (!valido) return res.status(400).json({ errores });
 
-        // Comprobar duplicados por separado para indicar cuál campo ya existe
-        // El DNI se valida solo dentro del mismo rol: una persona puede ser cliente y empleado a la vez con cuentas distintas
-        if (await User.findOne({ DNI, rol })) return res.status(400).json({ campo: 'DNI',    mensaje: `Ya existe un ${rol} con ese DNI.` });
-        if (await User.findOne({ correo }))   return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        // Comprobar duplicados: bloquea si hay usuario activo en conflicto
+        // o si hay un correo que pertenece a otra cuenta de baja con rol distinto
+        // Si hay usuarios inactivos del mismo rol, devolver 409 con la lista para que el front ofrezca reactivar
+        const { bloqueo, inactivos } = await detectarDuplicadosAlCrear(DNI, correo, rol);
+        if (bloqueo)   return res.status(400).json({ campo: bloqueo.campo, mensaje: bloqueo.mensaje });
+        if (inactivos) return res.status(409).json({ inactivos: inactivos.map(proyectarInactivo) });
 
         // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
         const passwordTemporal = generarPasswordTemporal();

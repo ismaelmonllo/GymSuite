@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import ModalBase from './ModalBase'
 import ModalCambiarContrasena from './ModalCambiarContrasena'
+import ModalReactivar from './ModalReactivar'
 import ModalResultado from './ModalResultado'
 import CampoFormulario from '../ui/CampoFormulario'
 import api from '../../services/api'
@@ -98,6 +99,8 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
   const [guardando, setGuardando] = useState(false)
   // resultado: { exito: bool, mensaje: string, datos: obj } — abre ModalResultado cuando no es null
   const [resultado, setResultado] = useState(null)
+  // Lista de usuarios de baja que coinciden por DNI o correo al crear; abre ModalReactivar cuando no es null
+  const [inactivosReactivar, setInactivosReactivar] = useState(null)
 
   // Cargar cuotas solo al crear un usuario (el select solo aparece al crear cliente)
   useEffect(() => {
@@ -149,9 +152,13 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
       })
     } catch (err) {
       console.error('Error al guardar usuario:', err.response?.data ?? err.message)
+      console.log('[debug] status:', err.response?.status, ' data:', err.response?.data)
       const data = err.response?.data
-      // Si el servidor indica qué campo tiene el conflicto (correo/DNI duplicado), mostrarlo como error de campo
-      if (data?.campo && data?.mensaje) {
+      // 409: el backend ha encontrado usuarios de baja con el mismo DNI o correo; abrir modal para ofrecer reactivar
+      if (err.response?.status === 409 && Array.isArray(data?.inactivos) && data.inactivos.length > 0) {
+        setInactivosReactivar(data.inactivos)
+      } else if (data?.campo && data?.mensaje) {
+        // Si el servidor indica qué campo tiene el conflicto (correo/DNI duplicado), mostrarlo como error de campo
         setErrores(prev => ({ ...prev, [data.campo]: data.mensaje }))
       } else {
         setResultado({ exito: false, mensaje: data?.mensaje ?? 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.' })
@@ -379,6 +386,20 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
 
     {modalContrasena && (
       <ModalCambiarContrasena onClose={() => setModalContrasena(false)} />
+    )}
+
+    {/* Modal de reactivación: cuando se ha intentado crear y existen usuarios de baja con esos datos.
+        Al reactivar uno, se notifica al padre y se cierra el modal de creación. */}
+    {inactivosReactivar && (
+      <ModalReactivar
+        inactivos={inactivosReactivar}
+        onClose={() => setInactivosReactivar(null)}
+        onReactivado={(datos) => {
+          setInactivosReactivar(null)
+          onGuardar?.(datos)
+          onClose()
+        }}
+      />
     )}
     </>
   )
