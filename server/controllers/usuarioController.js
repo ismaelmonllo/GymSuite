@@ -85,8 +85,9 @@ export const crearCliente = async (req, res) => {
         if (!valido) return res.status(400).json({ errores });
 
         // Comprobar duplicados por separado para indicar cuál campo ya existe
-        if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
-        if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        // El DNI se valida solo dentro del mismo rol: una persona puede ser cliente y empleado a la vez con cuentas distintas
+        if (await User.findOne({ DNI, rol: 'cliente' })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un cliente con ese DNI.' });
+        if (await User.findOne({ correo }))              return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
         const passwordTemporal = generarPasswordTemporal();
@@ -137,9 +138,10 @@ export const editarCliente = async (req, res) => {
         if (!valido) return res.status(400).json({ errores });
 
         // Comprobar duplicados excluyendo el propio documento
+        // El DNI solo choca dentro del mismo rol; aquí el rol fijo es 'cliente'
         const id = req.params.id;
-        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI,    _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
-        if (datos.correo && await User.findOne({ correo: datos.correo, _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI, rol: 'cliente', _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un cliente con ese DNI.' });
+        if (datos.correo && await User.findOne({ correo: datos.correo,              _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Actualizar solo los campos permitidos y devolver el documento actualizado
         const clienteActualizado = await User.findByIdAndUpdate(
@@ -298,8 +300,9 @@ export const crearEmpleado = async (req, res) => {
         if (!valido) return res.status(400).json({ errores });
 
         // Comprobar duplicados por separado para indicar cuál campo ya existe
-        if (await User.findOne({ DNI }))    return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
-        if (await User.findOne({ correo })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        // El DNI se valida solo dentro del mismo rol: una persona puede ser cliente y empleado a la vez con cuentas distintas
+        if (await User.findOne({ DNI, rol })) return res.status(400).json({ campo: 'DNI',    mensaje: `Ya existe un ${rol} con ese DNI.` });
+        if (await User.findOne({ correo }))   return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Generar contraseña temporal y cifrarla antes de guardarla en la base de datos
         const passwordTemporal = generarPasswordTemporal();
@@ -354,9 +357,10 @@ export const editarEmpleado = async (req, res) => {
         if (!valido) return res.status(400).json({ errores });
 
         // Comprobar duplicados excluyendo el propio documento
+        // El DNI solo choca dentro del mismo rol del empleado
         const id = req.params.id;
-        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI,    _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: 'Ya existe un usuario con ese DNI.' });
-        if (datos.correo && await User.findOne({ correo: datos.correo, _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
+        if (datos.DNI    && await User.findOne({ DNI:    datos.DNI, rol: usuario.rol, _id: { $ne: id } })) return res.status(400).json({ campo: 'DNI',    mensaje: `Ya existe un ${usuario.rol} con ese DNI.` });
+        if (datos.correo && await User.findOne({ correo: datos.correo,                _id: { $ne: id } })) return res.status(400).json({ campo: 'correo', mensaje: 'Ya existe un usuario con ese correo.' });
 
         // Actualizar solo los campos permitidos y devolver el documento actualizado
         const empleadoActualizado = await User.findByIdAndUpdate(

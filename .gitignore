@@ -3,3 +3,4 @@ node_modules/
 vercel.front.json
 server/seed.js
 server/migrate-importes-to-cents.js
+server/scripts/
