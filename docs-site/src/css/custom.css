@@ -1,0 +1,32 @@
+/* Paleta GymSuite: naranja sobre fondo neutro oscuro */
+
+:root {
+  --ifm-color-primary: #E5702A;
+  --ifm-color-primary-dark: #d2621f;
+  --ifm-color-primary-darker: #c75d1d;
+  --ifm-color-primary-darkest: #a44d18;
+  --ifm-color-primary-light: #e87f40;
+  --ifm-color-primary-lighter: #ea8852;
+  --ifm-color-primary-lightest: #f09540;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* Modo oscuro: fondos GymSuite (#1A1A1A pagina, #2D2D2D cards) */
+[data-theme='dark'] {
+  --ifm-color-primary: #F09540;
+  --ifm-color-primary-dark: #ec8326;
+  --ifm-color-primary-darker: #e57a1c;
+  --ifm-color-primary-darkest: #bd6517;
+  --ifm-color-primary-light: #f3a55a;
+  --ifm-color-primary-lighter: #f4ad68;
+  --ifm-color-primary-lightest: #f7c290;
+
+  --ifm-background-color: #1A1A1A;
+  --ifm-background-surface-color: #2D2D2D;
+  --ifm-navbar-background-color: #2D2D2D;
+  --ifm-footer-background-color: #1A1A1A;
+  --ifm-color-content: #FDEBD0;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.08);
+}

@@ -1,0 +1,11 @@
+{
+  "label": "Vistas",
+  "position": 2,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Vistas",
+    "description": "Pantallas principales: login con 2FA y los tres dashboards por rol."
+  }
+}

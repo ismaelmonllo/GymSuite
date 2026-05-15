@@ -1,0 +1,11 @@
+{
+  "label": "Frontend",
+  "position": 5,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Frontend",
+    "description": "Aplicación React con AuthContext, axios interceptors, rutas protegidas, vistas por rol, componentes compartidos y helpers."
+  }
+}

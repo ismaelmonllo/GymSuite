@@ -1,0 +1,11 @@
+{
+  "label": "Arquitectura",
+  "position": 3,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Arquitectura",
+    "description": "Visión general del sistema, stack, flujo de datos, roles y decisiones de arquitectura (ADR)."
+  }
+}

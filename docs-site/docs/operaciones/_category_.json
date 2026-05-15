@@ -1,0 +1,11 @@
+{
+  "label": "Operaciones",
+  "position": 7,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Operaciones",
+    "description": "Despliegue, variables de entorno, cron, backup y monitorización."
+  }
+}

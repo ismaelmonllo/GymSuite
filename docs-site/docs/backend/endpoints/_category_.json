@@ -1,0 +1,11 @@
+{
+  "label": "Endpoints",
+  "position": 2,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Endpoints REST",
+    "description": "Documentación completa de todos los endpoints de la API: método, ruta, permisos, body, respuestas y errores."
+  }
+}

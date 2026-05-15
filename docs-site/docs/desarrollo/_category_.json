@@ -1,0 +1,11 @@
+{
+  "label": "Desarrollo",
+  "position": 8,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Desarrollo",
+    "description": "Setup local, estilo de código, flujo de Git, testing y guía de contribución."
+  }
+}

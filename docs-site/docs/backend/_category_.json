@@ -1,0 +1,11 @@
+{
+  "label": "Backend",
+  "position": 4,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Backend",
+    "description": "Servidor Express, modelos Mongoose, controladores, validadores y endpoints REST."
+  }
+}

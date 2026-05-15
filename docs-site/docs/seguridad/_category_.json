@@ -1,0 +1,11 @@
+{
+  "label": "Seguridad",
+  "position": 6,
+  "collapsible": true,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "title": "Seguridad",
+    "description": "Modelo de amenazas, tokens, cookies, 2FA y hashing de contraseñas."
+  }
+}
