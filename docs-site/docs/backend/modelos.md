@@ -5,7 +5,7 @@ description: Schemas de MongoDB - campos, validaciones, índices y relaciones.
 tags: [backend, mongodb, modelos]
 ---
 
-Schemas Mongoose en `server/models/`. Cinco colecciones: `usuarios`, `mediciones`, `pagos`, `tipos_cuota`, `otps`. Importes siempre en céntimos (enteros).
+Schemas Mongoose en `server/models/`. Seis colecciones: `usuarios`, `mediciones`, `pagos`, `tipos_cuota`, `otps`, `reset_tokens`. Importes siempre en céntimos (enteros).
 
 ## Diagrama ER
 
@@ -82,8 +82,8 @@ Colección unificada para los tres roles (admin/entrenador/cliente). Diferenciad
 | `_id` | ObjectId | auto | — | Generado por Mongo |
 | `nombre` | String | sí | — | — |
 | `apellidos` | String | sí | — | — |
-| `correo` | String | sí | — | **Único globalmente** |
-| `contrasena` | String | sí | — | Hash bcrypt. Nunca se devuelve por API |
+| `correo` | String | sí | — | **Único globalmente**. `lowercase: true, trim: true` — Mongoose normaliza al guardar. |
+| `contrasena` | String | sí | — | Hash bcrypt. **`select: false`** — excluida de queries por defecto. Incluir con `.select('+contrasena')` solo en login y cambiarContrasena |
 | `telefono` | String | no | — | Mock prefijo `5` |
 | `direccion` | String | no | — | — |
 | `fecha_nacimiento` | Date | sí | — | Edad 16–120 |
@@ -105,7 +105,8 @@ Colección unificada para los tres roles (admin/entrenador/cliente). Diferenciad
 
 - Al crear, generar contraseña con `generarPasswordTemporal()` y hashear con `bcrypt.hash(_, 10)`.
 - `validarCrearCliente` y `validarCrearTrabajador` **no** validan `contrasena`.
-- Al editar, excluir siempre `rol`, `contrasena`, `fecha_alta`. `editarEmpleado` excluye además `nivel` y `tipo_cuota`.
+- `contrasena` tiene `select: false`: no aparece en ninguna query salvo que se pida con `.select('+contrasena')`. Solo deben hacerlo `login` y `cambiarContrasena` en `authController.js`.
+- Al editar, usar las whitelist `CAMPOS_EDITABLES_CLIENTE` / `CAMPOS_EDITABLES_EMPLEADO` — campos no listados (incluido `contrasena`) se ignoran.
 - `darDeAlta` **resetea** `fecha_alta` a `new Date()` además de `activo: true`.
 
 <a id="mediciones"></a>
@@ -128,6 +129,12 @@ Registros antropométricos. Todos los campos numéricos opcionales (permite regi
 | `cuello`, `hombros`, `pecho_ins`, `pecho_exp`, `cintura`, `cadera`, `muslo`, `gemelo`, `brazo`, `antebrazo` | Number | no | — | cm (perímetros) |
 | `biceps`, `triceps`, `subescapular`, `cresta_iliaca` | Number | no | — | mm (pliegues) |
 | `observaciones` | String | no | — | Máx 500 chars |
+
+### Gotchas
+
+### Índices
+
+- `{ cliente_id: 1, fecha: -1 }` — cubre `find({ cliente_id }).sort({ fecha: -1 })` (historial de mediciones por cliente).
 
 ### Gotchas
 
@@ -154,6 +161,12 @@ Pagos mensuales de cuota. Generados con `pendiente=true`, sin `fecha` ni `regist
 | `fecha` | Date | no | — | Al confirmar |
 | `registrado_por` | ObjectId (`Usuario`) | no | — | Al confirmar |
 | `grupo_pago` | ObjectId | no | — | Agrupa N meses de una misma cuota multimensual |
+
+### Índices
+
+- `{ cliente_id: 1, mes: -1 }` — historial de pagos por cliente.
+- `{ grupo_pago: 1 }` — `updateMany`/`deleteMany` por grupo.
+- `{ mes: 1, pendiente: 1 }` — stats mensuales y pagos pendientes.
 
 ### Gotchas
 
@@ -183,6 +196,26 @@ Catálogo de cuotas disponibles. Editable solo por admin.
 - `crearCuota` destructura `{ nombre, meses, importe }` explícitamente para rechazar campos extra.
 - Al borrar, los pagos quedan con el nombre intacto (`tipo_cuota` es String en `Pago`).
 
+<a id="reset-tokens"></a>
+
+## `reset_tokens`
+
+Tokens de un solo uso para restablecer contraseña por link. Se crean al resetear y se eliminan al consumirse o caducar.
+
+### Campos
+
+| Campo | Tipo | Obligatorio | Notas |
+|-------|------|-------------|-------|
+| `usuario_id` | ObjectId | sí | Indexado. Referencia al usuario |
+| `token` | String | sí | 64 hex chars (`crypto.randomBytes(32)`). Único |
+| `expira` | Date | sí | **Índice TTL** (`expires: 0`). Vida: 30 min |
+
+### Gotchas
+
+- `findOneAndUpdate({ usuario_id }, ..., { upsert: true })` — solo un token activo por usuario.
+- Se consume con `deleteOne({ token })` tras usarse. Segunda apertura del link → 400.
+- `restablecerPassword` verifica `Date.now() > entrada.expira` aunque el TTL aún no haya barrido.
+
 <a id="otps"></a>
 
 ## `otps`
@@ -197,10 +230,12 @@ Códigos OTP del 2FA. Almacenados en Mongo (no memoria) para sobrevivir a cold s
 | `correo` | String | sí | Indexado |
 | `codigo` | String | sí | 6 dígitos con `crypto.randomInt(100000, 1000000)` |
 | `expira` | Date | sí | **Índice TTL** (`expires: 0`) — Mongo borra automáticamente |
+| `intentos` | Number (default `0`) | no | Contador de fallos; al alcanzar 5, `verificar2FA` borra el OTP y devuelve 429 |
 
 ### Gotchas
 
-- `findOneAndUpdate({ correo }, ..., { upsert: true })` sobrescribe OTP previo.
+- `findOneAndUpdate({ correo }, ..., { upsert: true })` sobrescribe OTP previo. El contador `intentos` vuelve a `0` con el nuevo documento.
 - Tras verificar, `deleteOne({ correo })` para evitar reuso.
+- Cada código incorrecto: `Otp.updateOne({ correo }, { $inc: { intentos: 1 } })`.
 - TTL puede tardar segundos; `verificar2FA` también compara `Date.now() > entrada.expira.getTime()` por seguridad.
-- Ventana de validez: **5 minutos**.
+- Ventana de validez: **5 minutos** (`expira = Date.now() + 5*60*1000`).

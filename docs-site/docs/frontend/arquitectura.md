@@ -32,7 +32,7 @@ Arquitectura técnica del SPA: entry point, router, contexto de sesión, cliente
 </AuthProvider>
 ```
 
-**Constante:** `RUTAS_ROL = { admin: '/admin', entrenador: '/entrenador', cliente: '/cliente' }`.
+**Constante:** `RUTAS_ROL` — importada desde `src/constants.js` (no definida localmente).
 
 **Componentes internos:**
 
@@ -43,11 +43,9 @@ Arquitectura técnica del SPA: entry point, router, contexto de sesión, cliente
 
 ## Sesión global — `AuthContext`
 
-**Separación intencional**:
-- `context/authContext.js` solo `export const AuthContext = createContext(null)`.
-- `context/AuthContext.jsx` provider + lógica.
-
-Razón: convención de React Fast Refresh. Si un archivo exporta `createContext` y además contiene componentes, el HMR pierde estado al recargar.
+**Organización de archivos:**
+- `context/AuthContext.jsx` contiene `createContext`, `AuthProvider` y toda la lógica.
+- `context/authContext.js` solo re-exporta `AuthContext` desde `./AuthContext` — existe para compatibilidad con imports previos.
 
 ### Inicialización
 
@@ -62,7 +60,7 @@ Se ejecuta al cargar el módulo (antes del mount). La app arranca ya con sesión
 
 **Helpers:**
 - `leerCookie()` — regex `/(?:^|;\s*)token=([^;]+)/`.
-- `decodificarToken(token)` — `JSON.parse(atob(token.split('.')[1]))`. **No verifica firma** (confía en backend).
+- `decodificarToken(token)` — Soporte UTF-8 completo (ñ, tildes): normaliza URL-safe base64, convierte cada byte a `%HH`, aplica `decodeURIComponent` y parsea el JSON. **No verifica firma** (confía en backend).
 
 ### Funciones expuestas
 
@@ -70,13 +68,13 @@ Se ejecuta al cargar el módulo (antes del mount). La app arranca ya con sesión
 |---------|---------------|
 | `login(datos)` | Tras login + 2FA OK. Guarda cookie `token` (`SameSite=Strict`, 2h) y estado |
 | `logout()` | Botón logout. Llama `POST /api/auth/logout` (ignora error) y `limpiarSesion` |
-| `limpiarSesion()` | Borra cookie y resetea estado. **También** usada por axios cuando refresh falla |
+| `limpiarSesion()` | Borra cookie y resetea estado. Envuelta en `useCallback([], [])` para referencia estable. También usada por axios cuando refresh falla |
 | `actualizarToken(nuevoToken)` | Tras cambiar contraseña. Sustituye token sin reloguear; el modal forzado se desmonta solo |
 
 ### Registro de callback de sesión expirada
 
 ```js
-useEffect(() => { setSesionExpiradaCallback(limpiarSesion) }, []);
+useEffect(() => { setSesionExpiradaCallback(limpiarSesion) }, [limpiarSesion]);
 ```
 
 Inyecta `limpiarSesion` en `api.js` sin que los módulos se importen mutuamente.
@@ -148,7 +146,9 @@ Dos objetos exportados. **No escribir clases de color directas en componentes �
 
 Detalle: [Estilos y paleta](./estilos.md).
 
-## Helpers — `utils.js`
+## Helpers — `utils/`
+
+Las utilidades viven en `client/src/utils/`. El archivo `utils/index.js` re-exporta todo de `utils/formatos.js`, así los imports existentes (`from '../utils'`) siguen funcionando.
 
 | Helper | Devuelve | Uso |
 |--------|----------|-----|
@@ -158,6 +158,25 @@ Detalle: [Estilos y paleta](./estilos.md).
 | `formatearFecha(fecha)` | string | `"DD/MM/YYYY"` o `"—"` |
 
 Detalle: [Helpers](./helpers.md).
+
+## Constantes — `constants.js`
+
+```js
+export const RUTAS_ROL = { admin: '/admin', entrenador: '/entrenador', cliente: '/cliente' }
+```
+
+Importado en `App.jsx` y `LoginPage.jsx`. Antes estaba duplicado en ambos.
+
+## Hooks de negocio — `hooks/`
+
+Hooks que encapsulan fetching + estado de los dashboards.
+
+| Hook | Parámetros | Devuelve | Usado en |
+|------|------------|----------|----------|
+| `useUsuarios(rolUsuario)` | `'admin'` \| `'entrenador'` | `{ clientes, empleados, setClientes, setEmpleados, cargando, recargar }` | `AdminDashboard`, `EntrenadorDashboard` |
+| `usePagosGenerar(onExito)` | callback | `{ confirmar, resultado, cargando, abrir, ejecutar, cerrarResultado }` | Ambos dashboards |
+| `useConfirmarPago(setUltimoPago, setErrorOperacion)` | setters | `{ confirmacionPago, confirmandoPago, abrirConfirmacion, ejecutar }` | Ambos dashboards |
+| `useCuotas()` | — | array de cuotas | Dashboards + `ModalUsuario` |
 
 ## Vite — `vite.config.js`
 

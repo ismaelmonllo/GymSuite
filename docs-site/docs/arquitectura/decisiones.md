@@ -147,7 +147,7 @@ Detalle: [Seguridad → Cookies](../seguridad/cookies.md).
 
 **Consecuencias:**
 - Vector XSS: si hay un XSS, el JWT puede robarse. Mitigaciones: CSP, sanitización, sin librerías sospechosas.
-- Refresh sigue protegido. Robar el JWT da 2h de acceso máximo.
+- Refresh sigue protegido. Robar el JWT da 15m de acceso máximo.
 
 **Alternativa más segura:** doble cookie (acceso + refresh, ambas httpOnly) y backend lee la de acceso. Coste: refactor de todos los controllers. Aceptamos el trade-off por simplicidad académica.
 

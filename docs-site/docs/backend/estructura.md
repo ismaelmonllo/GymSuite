@@ -36,7 +36,8 @@ server/
 │   ├── cuotasRoutes.js
 │   └── statsRoutes.js
 ├── utils/
-│   ├── mailer.js             # sendMail (Nodemailer + Gmail)
+│   ├── audit.js              # auditar(evento, req, datos) — registra eventos de seguridad en AuditLog
+│   ├── mailer.js             # sendMail + escaparHtml (Nodemailer + Gmail)
 │   └── passwords.js          # generarPasswordTemporal (CSPRNG)
 ├── validators/
 │   ├── validarCampos.js      # Atómicos por campo
@@ -99,8 +100,9 @@ router.post('/generar-cron', verificarCronSecret, generarPagos);
 
 | Archivo | Función |
 |---------|---------|
-| `mailer.js` | `sendMail({ to, subject, html })`. Transporter Nodemailer **dentro de la función** (gotcha ESM) |
-| `passwords.js` | `generarPasswordTemporal()` con `crypto.randomBytes`, 12 chars garantizando 1 min/may/num/símb |
+| `audit.js` | `auditar(evento, req, datos)`. Escribe en `AuditLog` sin lanzar — fallo de audit no interrumpe el flujo |
+| `mailer.js` | `sendMail({ to, subject, html })` + `escaparHtml(txt)`. Transporter Nodemailer **dentro de la función** (gotcha ESM) |
+| `passwords.js` | `generarPasswordTemporal()` con `crypto.randomInt` (sin sesgo de módulo), 12 chars garantizando 1 min/may/num/símb |
 
 ### `validators/`
 

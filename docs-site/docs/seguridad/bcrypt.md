@@ -64,11 +64,12 @@ await Usuario.create({ ...datos, contrasena: hash });
 ### Verificar (login, cambio propio)
 
 ```js
-const ok = await bcrypt.compare(contrasenaPlana, usuario.contrasena);
-if (!ok) return res.status(401).json({ mensaje: 'Credenciales inválidas' });
+const hashAComparar = usuario?.contrasena ?? HASH_DUMMY;
+const ok = await bcrypt.compare(contrasenaPlana, hashAComparar);
+if (!usuario || !ok) return res.status(401).json({ mensaje: 'Credenciales incorrectas' });
 ```
 
-`bcrypt.compare` es **constant-time** — no filtra por timing si la contraseña es válida o no.
+`bcrypt.compare` es **constant-time** sobre el hash: dadas dos contraseñas distintas frente al mismo hash, el tiempo es similar. Pero si el correo no existe y se hace un early return sin `compare`, la respuesta vuelve en ~1 ms vs ~80 ms cuando sí existe — y eso filtra qué cuentas son válidas. Por eso `authController.login` compara siempre contra `HASH_DUMMY` (un bcrypt precalculado al arrancar el módulo) cuando `findOne` devuelve `null`.
 
 ## Política de contraseñas
 
@@ -84,44 +85,41 @@ if (!ok) return res.status(401).json({ mensaje: 'Credenciales inválidas' });
 `server/utils/passwords.js`:
 
 ```js
-import { randomBytes } from 'crypto';
+import { randomInt } from 'crypto';
 
-const MINUSCULAS = 'abcdefghijklmnñopqrstuvwxyz';
-const MAYUSCULAS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+const MINUSCULAS = 'abcdefghijklmnopqrstuvwxyz';
+const MAYUSCULAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const NUMEROS = '0123456789';
 const SIMBOLOS = '!@#$%^&*()-_=+[]{}|;:,.<>?';
 const CHARS = MINUSCULAS + MAYUSCULAS + NUMEROS + SIMBOLOS;
 
-function elegir(conjunto) {
-  return conjunto[randomBytes(1)[0] % conjunto.length];  // CSPRNG
-}
+const elegir = (conjunto) => conjunto[randomInt(0, conjunto.length)];
 
-function mezclar(arr) {
-  // Fisher-Yates con bytes aleatorios
+const mezclar = (arr) => {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = randomBytes(1)[0] % (i + 1);
+    const j = randomInt(0, i + 1);
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
-}
+};
 
-export function generarPasswordTemporal() {
-  const obligatorios = [
+export const generarPasswordTemporal = () => {
+  const chars = [
     elegir(MINUSCULAS),
     elegir(MAYUSCULAS),
     elegir(NUMEROS),
     elegir(SIMBOLOS),
+    ...Array.from({ length: 8 }, () => elegir(CHARS)),
   ];
-  const libres = Array.from({ length: 8 }, () => elegir(CHARS));
-  return mezclar([...obligatorios, ...libres]).join('');
-}
+  return mezclar(chars).join('');
+};
 ```
 
-12 chars garantizando 1 de cada categoría obligatoria. Usada en `crearCliente`, `crearEmpleado`, `resetearPassword`. Tras generar, se hashea con bcrypt y se manda por email.
+12 chars garantizando 1 de cada categoría obligatoria. `randomInt(min, max)` garantiza distribución uniforme sin sesgo de módulo — a diferencia de `randomBytes(1)[0] % n`, que sesga hacia los primeros caracteres cuando `n` no divide 256. Usada en `crearCliente`, `crearEmpleado`, `resetearPassword`. Tras generar, se hashea con bcrypt y se manda por email.
 
 > ⚠️ **No `Math.random`**
 >
-> `Math.random()` es predecible. Para contraseñas / OTPs / tokens usar siempre `crypto.randomBytes` o `crypto.randomInt`.
+> `Math.random()` es predecible. Para contraseñas / OTPs / tokens usar siempre `crypto.randomInt`.
 
 ## Flujo de cambio forzoso
 

@@ -80,7 +80,7 @@ Crea entrenador. Sin campo contraseña (la genera el backend).
 
 ### `PUT /api/entrenadores/:id`
 
-Edita entrenador. Ignora `rol`, `contrasena`, `fecha_alta`, `nivel`, `tipo_cuota`.
+Edita entrenador. Solo pasan al `$set` los campos de la whitelist `CAMPOS_EDITABLES_EMPLEADO`: `nombre`, `apellidos`, `correo`, `telefono`, `direccion`, `fecha_nacimiento`, `DNI`, `sexo`. Cualquier otro campo del body (`activo`, `forzar_cambio_password`, `rol`, `nivel`, `tipo_cuota`, etc.) es ignorado.
 
 **Permisos:** `verificarToken` + `verificarRol('admin')`.
 
@@ -92,7 +92,7 @@ Edita entrenador. Ignora `rol`, `contrasena`, `fecha_alta`, `nivel`, `tipo_cuota
 
 ### `PATCH /api/entrenadores/:id/baja`
 
-**Permisos:** `verificarToken` + `verificarRol('admin')`. **200:** `{ mensaje, usuario }`.
+**Permisos:** `verificarToken` + `verificarRol('admin')`. **200:** `{ mensaje, usuario }`. Setea `activo: false`; el usuario deja de pasar `login` (403) y `refresh` (401). Detalle: [Auth flujo § Gotchas](../auth-flujo.md#gotchas).
 
 <a id="patch-apientrenadoresidalta"></a>
 

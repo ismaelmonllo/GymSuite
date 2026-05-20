@@ -19,7 +19,7 @@ Historial de pagos de un cliente.
 
 **200:** array ordenado por `mes: -1` (lexicográfico funciona porque `YYYY-MM`).
 
-**Errores:** 400 ID inválido, 404 sin pagos.
+**Errores:** 400 ID inválido. Devuelve `200 []` si el cliente no tiene pagos (vacío no es error).
 
 <a id="get-apipagosmis-pagos"></a>
 
@@ -105,10 +105,15 @@ Confirma todos los pagos de un grupo (cobro recibido).
 **200:**
 
 ```json
-{ "mensaje": "...", "actualizados": 3 }
+{
+  "mensaje": "...",
+  "actualizados": 3,
+  "clienteId": "<id>",
+  "ultimoPagoCliente": { "pendiente": false, "mes": "2025-05", "grupo_pago": "<id>", "tipo_cuota": "Mensual" }
+}
 ```
 
-`Pagos.updateMany({ grupo_pago }, { pendiente: false, fecha: new Date(), registrado_por })`.
+`Pagos.updateMany({ grupo_pago }, { pendiente: false, fecha: new Date(), registrado_por })`. El campo `ultimoPagoCliente` permite al frontend actualizar solo esa entrada del mapa sin hacer refetch del endpoint `/api/stats/ultimo-pago`.
 
 **Errores:**
 

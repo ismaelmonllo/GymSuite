@@ -38,7 +38,7 @@ Mensajes literales devueltos por el backend, agrupados por código HTTP. Útil p
 |---------|-------------|-------|
 | `"Token no proporcionado"` | rutas con `verificarToken` | Sin header `Authorization` |
 | `"Token inválido o expirado"` | rutas con `verificarToken` | `jwt.verify` falló |
-| `"Credenciales inválidas"` | `/api/auth/login` | bcrypt.compare falló |
+| `"Credenciales incorrectas"` | `/api/auth/login` | bcrypt.compare falló o correo inexistente (mismo mensaje y latencia) |
 | `"Contraseña actual incorrecta"` | `/api/auth/cambiar-contrasena` | bcrypt.compare falló |
 | `"No hay código pendiente"` o equivalente | `/api/auth/verificar-2fa` | OTP no encontrado |
 | `"Código expirado"` | `/api/auth/verificar-2fa` | `Date.now() > expira` |
@@ -57,6 +57,9 @@ Mensajes literales devueltos por el backend, agrupados por código HTTP. Útil p
 | `"Solo puedes ver tu propio perfil"` | `GET /api/entrenadores/:id` | `verificarPropioOAdmin` |
 | `"No se puede editar un cliente desde esta ruta"` | `PUT /api/entrenadores/:id` | Target es cliente |
 | `"Rol incorrecto en el body"` | crear empleado | `verificarRolBody` |
+| `"Acceso denegado"` | `GET /api/mediciones/:id` | Cliente intenta leer medición de otro cliente |
+| `"Solo el entrenador que la registró puede modificarla"` | `PUT /api/mediciones/:id` | Otro entrenador intenta editar |
+| `"Solo el entrenador que la registró puede eliminarla"` | `DELETE /api/mediciones/:id` | Otro entrenador intenta borrar |
 
 ## 404 — Not Found
 
@@ -70,6 +73,17 @@ Mensajes literales devueltos por el backend, agrupados por código HTTP. Útil p
 | `"Sin pagos registrados"` | `GET /api/pagos/*` | `find` devolvió array vacío |
 | `"Grupo de pago no encontrado"` | `POST /api/pagos/registrar` | `findOne` devolvió null |
 | `"Tipo de cuota no encontrado"` | `/api/cuotas/:id` | — |
+
+## 429 — Too Many Requests
+
+| Mensaje | Endpoint(s) | Causa |
+|---------|-------------|-------|
+| `"Demasiados intentos. Espera 15 minutos."` | `/api/auth/login`, `/api/auth/verificar-2fa` | `limiteAuth` superado (5 req / 15 min por IP, contador compartido entre ambas) |
+| `"Demasiados intentos. Vuelve a iniciar sesión."` | `/api/auth/verificar-2fa` | 5 OTPs fallidos sobre el mismo correo; el OTP se invalida y obliga a relogin |
+| `"Too many requests, please try again later."` (default `express-rate-limit`) | `/api/auth/refresh` | `limiteRefresh` superado (30 req / 15 min) |
+| `"Too many requests, please try again later."` | cualquier endpoint | `limiteGlobal` superado (300 req / 15 min) |
+
+Cabeceras estándar en todas las respuestas con rate limit aplicado: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
 
 ## 409 — Conflict
 

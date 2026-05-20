@@ -55,7 +55,7 @@ Términos del dominio GymSuite en orden alfabético. Si una palabra te sale al l
 
 ## J
 
-**JWT.** "JSON Web Token". GymSuite usa dos: acceso (2h, en cookie JS-accesible) y refresh (7d, en cookie httpOnly). Ver [Tokens](../seguridad/tokens.md).
+**JWT.** "JSON Web Token". GymSuite usa dos: acceso (15m, en cookie JS-accesible) y refresh (7d, en cookie httpOnly). Ver [Tokens](../seguridad/tokens.md).
 
 ## M
 
@@ -89,7 +89,7 @@ Términos del dominio GymSuite en orden alfabético. Si una palabra te sale al l
 
 ## T
 
-**2FA.** "Two-Factor Authentication" — segundo factor por email con OTP de 6 dígitos. Saltable con `DISABLE_2FA=true` (dev) o cookie `2fa_verificado` (30 días).
+**2FA.** "Two-Factor Authentication" — segundo factor por email con OTP de 6 dígitos. Saltable con `DISABLE_2FA=true` (dev) o cookie `2fa_verificado` firmada con HMAC (7 días, ligada a `id_usuario + hash(User-Agent)`).
 
 **Tipo de cuota.** Sinónimo de "cuota". Catálogo: nombre + meses + importe total. Modelo `tipos_cuota`.
 

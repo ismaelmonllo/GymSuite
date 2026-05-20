@@ -89,12 +89,29 @@ Usado en 409. El frontend abre `ModalReactivar`.
 | `POST /api/pagos/generar-cron` | 401 sin header / no coincide |
 | `GET /api/stats/*` | 403 si no admin |
 
+## Manejo centralizado — `asyncHandler` + `errorHandler`
+
+Los controllers no tienen `try/catch`. Están envueltos con `asyncHandler` (`middleware/asyncHandler.js`):
+
+```js
+export const asyncHandler = (fn) => (req, res, next) =>
+    Promise.resolve(fn(req, res, next)).catch(next);
+```
+
+Cualquier excepción se pasa a `next(err)`. El `errorHandler` (`middleware/errorHandler.js`), registrado al final de `api/index.js`, la intercepta:
+
+- `ValidationError` (schema Mongoose, `runValidators: true`) → **400** `{ mensaje, errores }`.
+- `CastError` (ObjectId malformado que llega a Mongoose) → **400** `{ mensaje: 'ID no válido' }`.
+- Cualquier otro → **500** `{ mensaje: 'Error en el servidor' }` + `console.error` en logs.
+
+**Excepción:** `authController.refresh` conserva su propio `try/catch` alrededor de `jwt.verify` para responder **401** (no 500) ante tokens expirados o inválidos.
+
 ## Buenas prácticas al lanzar error
 
 1. **Comprobar el tipo de retorno Mongoose adecuado** ([ADR-004](../arquitectura/decisiones.md#consultas-mongoose)):
-   - `find` → `.length === 0` para 404.
+   - `find` → `.length === 0` para 404 (o `[]` si vacío no es error).
    - `findById*` → `!resultado` para 404.
-   - `save()` → try/catch para 500.
+   - `save()` → excepciones capturadas por `asyncHandler` → 500.
 
 2. **Mensajes en español** para coherencia con el resto del proyecto.
 

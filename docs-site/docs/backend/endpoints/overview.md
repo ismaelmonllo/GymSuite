@@ -13,6 +13,7 @@ Tabla canónica de todos los endpoints. Prefijo común: `/api`. Todas las rutas 
 - **Respuestas de error:** `{ mensaje: string }` o `{ errores: [{ campo, error }] }` para validación.
 - **Permisos:** combinación de middlewares — `verificarToken` exige JWT; `verificarRol(...)` exige rol; `verificarCronSecret` exige header.
 - **Importes** siempre en céntimos. Ver [Decisiones](../../arquitectura/decisiones.md#centimos).
+- **Rate limit:** todas las rutas pasan por `limiteGlobal` (300 req / 15 min por IP). Las rutas de auth tienen limitadores más estrictos (ver [Auth flujo § Rate limiting](../auth-flujo.md#rate-limiting)). Superar el tope devuelve **429** con `{ mensaje }` y headers `RateLimit-*`.
 
 ## Tabla maestra
 

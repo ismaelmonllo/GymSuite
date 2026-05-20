@@ -13,6 +13,8 @@ Inicia sesión. Devuelve token directo o pide 2FA.
 
 **Permisos:** público.
 
+**Rate limit:** `limiteAuth` — 5 req / 15 min por IP, contador compartido con `/verificar-2fa`.
+
 **Body:**
 
 | Campo | Tipo | Requerido | Descripción |
@@ -42,19 +44,23 @@ OTP de 6 dígitos enviado por email. Caducidad 5 min.
 | Código | Causa |
 |--------|-------|
 | 400 | `{ errores }` validación falló |
-| 401 | Credenciales inválidas |
-| 403 | Cuenta no coincide con la pestaña (`tab`) |
-| 404 | Usuario no encontrado |
+| 401 | `"Credenciales incorrectas"` — correo inexistente o contraseña incorrecta (mismo mensaje y latencia en ambos casos) |
+| 403 | Cuenta no coincide con la pestaña (`tab`), o cuenta deshabilitada (`activo: false`) → `"Cuenta deshabilitada"` |
+| 429 | `"Demasiados intentos. Espera 15 minutos."` |
 
 **Notas:**
-- Si cookie `2fa_verificado` presente: salta el OTP.
-- Si `DISABLE_2FA=true`: salta el OTP siempre (solo dev).
+- Si cookie `2fa_verificado` presente y `verificar2FACookie` valida la firma frente al `id` del usuario y el `User-Agent` actual: salta el OTP. Si la cookie se copió a otro navegador (UA distinta), se ignora y se sigue al OTP.
+- Si `DISABLE_2FA=true` **y** `NODE_ENV !== 'production'`: salta el OTP. En producción el guard ignora la flag aunque esté seteada.
+- `bcrypt.compare` se ejecuta también cuando el correo no existe (contra `HASH_DUMMY`) para igualar el tiempo de respuesta y evitar enumeración de cuentas por timing.
+- El check de `activo` se evalúa después de `bcrypt.compare` para no filtrar el estado de la cuenta a quien no tiene credenciales válidas.
 
 ## `POST /api/auth/verificar-2fa`
 
 Verifica el OTP enviado al email y emite tokens.
 
 **Permisos:** público.
+
+**Rate limit:** `limiteAuth` — 5 req / 15 min por IP, contador compartido con `/login`.
 
 **Body:**
 
@@ -69,15 +75,16 @@ Verifica el OTP enviado al email y emite tokens.
 { "token": "..." }
 ```
 
-Setea cookie `2fa_verificado` (30 días) y cookie `refresh_token` (7 días).
+Setea cookie `2fa_verificado` firmada (7 días, HMAC sobre `id_usuario + hash(User-Agent)`) y cookie `refresh_token` (7 días).
 
 **Errores:**
 
 | Código | Causa |
 |--------|-------|
 | 400 | Faltan datos |
-| 401 | Código no encontrado, expirado o incorrecto |
+| 401 | Código no encontrado, expirado o incorrecto. Cada fallo incrementa `Otp.intentos` |
 | 404 | Usuario no encontrado |
+| 429 | `"Demasiados intentos. Espera 15 minutos."` (tope `limiteAuth` por IP) **o** `"Demasiados intentos. Vuelve a iniciar sesión."` (5 OTPs fallidos sobre el mismo correo: el OTP se invalida y obliga a relogin) |
 
 ## `POST /api/auth/refresh`
 
@@ -85,25 +92,28 @@ Renueva el JWT de acceso a partir del refresh token en cookie.
 
 **Permisos:** público (lee cookie `refresh_token`).
 
+**Rate limit:** `limiteRefresh` — 30 req / 15 min por IP.
+
 **Sin body.**
 
 **200:**
 
 ```json
-{ "token": "<nuevo JWT 2h>" }
+{ "token": "<nuevo JWT 15m>" }
 ```
 
 **Errores:**
 
 | Código | Causa |
 |--------|-------|
-| 401 | Sin cookie, inválida o expirada |
+| 401 | Sin cookie, inválida o expirada, o `usuario.activo === false` → `"Sesión inválida"` |
+| 429 | Tope de refresh superado |
 
 **Nota:** el refresh **no** rota. La cookie sigue viva hasta su expiración natural. Ver [ADR-007](../../arquitectura/decisiones.md#jwt-js).
 
 ## `POST /api/auth/logout`
 
-Cierra sesión. Limpia cookie `refresh_token`.
+Cierra sesión. Limpia cookies `refresh_token` y `2fa_verificado`.
 
 **Permisos:** público.
 
@@ -165,7 +175,7 @@ Un admin resetea la contraseña de otro usuario.
 { "ok": true }
 ```
 
-Genera contraseña temporal con `generarPasswordTemporal()`, hashea con bcrypt, marca `forzar_cambio_password=true`, envía por email.
+Genera token `crypto.randomBytes(32)` (64 hex), lo guarda en `reset_tokens` con TTL de 30 min (upsert — solo uno activo por usuario), y envía email con el link `${FRONTEND_URL}/restablecer/<token>`. La contraseña actual **no cambia**.
 
 **Errores:**
 
@@ -173,6 +183,29 @@ Genera contraseña temporal con `generarPasswordTemporal()`, hashea con bcrypt, 
 |--------|-------|
 | 400 | ID inválido |
 | 404 | Usuario no encontrado |
+
+## `POST /api/auth/restablecer-password`
+
+Aplica la nueva contraseña usando el token del link de email. **Público** (sin JWT).
+
+**Body:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `token` | string | Token del link (`/restablecer/:token`) |
+| `contrasenaNueva` | string | Nueva contraseña (mínimo 8 chars) |
+
+**200:**
+
+```json
+{ "ok": true }
+```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| 400 | Token ausente, inválido, ya usado o caducado |
 
 ## Lecturas relacionadas
 

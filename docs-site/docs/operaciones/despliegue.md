@@ -101,25 +101,33 @@ Sin esto, refrescar en `/admin` daría 404.
 
 Sin variables de entorno necesarias.
 
-## CORS — gotcha clásico
+## CORS — fail-closed
 
 `server/api/index.js`:
 
 ```js
-const origenesPermitidos = process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : true;
+const frontendUrl = process.env.FRONTEND_URL;
+if (process.env.NODE_ENV === 'production' && !frontendUrl) {
+  throw new Error('FRONTEND_URL es obligatoria en producción');
+}
+const origenesPermitidos = frontendUrl
+  ? [frontendUrl]
+  : ['http://localhost:5173', 'http://localhost:3000'];
 app.use(cors({ origin: origenesPermitidos, credentials: true }));
 ```
 
 | Entorno | `FRONTEND_URL` | Origen permitido |
 |---------|----------------|------------------|
 | Prod | setado | Solo ese dominio (restrictivo) |
-| Dev | sin setar | `true` = cualquier origen (útil LAN) |
+| Prod | sin setar | La función aborta en cold start con `Error: FRONTEND_URL es obligatoria en producción` |
+| Dev | setado | Solo ese dominio |
+| Dev | sin setar | Solo `http://localhost:5173` y `http://localhost:3000` |
 
 `credentials: true` **obligatorio** para que las cookies viajen.
 
-> 🚨 **CORS abierto con credentials**
->
-> `origin: '*'` + `credentials: true` está **prohibido** por el navegador. En prod siempre dominio específico.
+:::danger CORS abierto con credentials
+`origin: '*'` o `origin: true` reflejando cualquier origen junto a `credentials: true` permitiría a un sitio malicioso adjuntar las cookies de sesión del usuario en peticiones cross-site. El navegador prohíbe `'*' + credentials`, pero `origin: true` (reflejo del header `Origin` recibido) sí pasa. Por eso el bloque actual nunca usa `true` y la prod aborta si la env var no llega.
+:::
 
 ## Conexión Mongo con fallback
 
@@ -147,6 +155,92 @@ Vercel = IPs dinámicas → en Atlas usar **`0.0.0.0/0`** o configurar Private L
 
 Plan gratuito: **10s** por function. Si `generarPagos` excede con muchos clientes, monitorizar y paginar.
 
+## Sanitización — `express-mongo-sanitize`
+
+`mongoSanitize({ replaceWith: '_' })` se aplica en `server/api/index.js` justo tras `express.json()`. Reemplaza `$` y `.` en todas las keys de `req.body`, `req.query` y `req.params` por `_`.
+
+Protege contra dos vectores a la vez:
+
+- **NoSQL injection:** impide que operadores Mongo (`$ne`, `$gt`, `$where`…) lleguen a las consultas.
+- **Prototype pollution:** impide keys como `__proto__` o `constructor` que podrían contaminar el prototipo de Object.
+
+:::note
+Mongoose schema-strict ya rechaza campos no declarados, pero `mongoSanitize` añade una capa antes de que el body llegue a los controllers.
+:::
+
+## Swagger UI
+
+`/api/docs` y `/api/docs/spec` solo se registran cuando `NODE_ENV !== 'production'`. En producción esas rutas no existen → 404. Esto evita exponer la superficie de la API a un atacante.
+
+En desarrollo, Swagger UI carga sus assets desde `unpkg.com/swagger-ui-dist@5.32.4` con atributos `integrity` (SRI sha384) y `crossorigin="anonymous"`.
+
+## Headers de seguridad — `helmet`
+
+`helmet` se aplica en `server/api/index.js` antes de CORS y rutas. Añade automáticamente:
+
+| Header | Efecto |
+|--------|--------|
+| `Strict-Transport-Security` | Fuerza HTTPS (`max-age=31536000; includeSubDomains`) |
+| `X-Content-Type-Options: nosniff` | Evita MIME sniffing |
+| `X-Frame-Options: DENY` | Evita clickjacking (vía `frameAncestors: ["'none'"]`) |
+| `Referrer-Policy: no-referrer` | No filtra la URL de origen en peticiones cross-origin |
+| `Content-Security-Policy` | prod: solo `'self'`; dev: abre `https://unpkg.com` para Swagger |
+
+La CSP varía según entorno. En producción el `scriptSrc` y `styleSrc` se restringen a `'self'` porque Swagger no existe. En desarrollo se abre `https://unpkg.com` para los assets de Swagger UI (fijados con SRI).
+
+## Manejo de errores del servidor
+
+Los controllers capturan excepciones en `try/catch`. El comportamiento del `catch`:
+
+1. `console.error('[error]', error)` — conserva el stack en los logs del servidor (visibles en Vercel → Functions → Logs).
+2. Respuesta al cliente: en `NODE_ENV=production` devuelve `"Error en el servidor"` sin detalle; en dev devuelve `error.message` para facilitar el debug.
+
+`server/api/index.js` registra un middleware centralizado de error como red de seguridad para cualquier excepción no capturada por los controllers:
+
+```js
+app.use((err, _req, res, _next) => {
+    console.error('[error no capturado]', err);
+    res.status(err.status ?? 500).json({
+        mensaje: process.env.NODE_ENV === 'production' ? 'Error en el servidor' : err.message,
+    });
+});
+```
+
+:::tip
+En Vercel, los `console.error` aparecen en el panel **Functions → Logs** del proyecto backend.
+:::
+
+## Auditoría de dependencias — CI
+
+`.github/workflows/audit.yml` ejecuta `npm audit --audit-level=high` en cada PR a `main` y los lunes 08:00 UTC:
+
+```yaml title=".github/workflows/audit.yml"
+jobs:
+  audit-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+        working-directory: GymSuite/server
+      - run: npm audit --audit-level=high
+        working-directory: GymSuite/server
+```
+
+`server/package.json` incluye `"overrides": { "tar": "^7.4.3" }` para forzar una versión segura de `tar`, que llegaba como dependencia transitiva de `bcrypt → @mapbox/node-pre-gyp` (solo usada en install, no en runtime).
+
+## Rate limiting en serverless
+
+`express-rate-limit` está configurado con store en memoria (default). En Vercel cada función arranca su propio proceso en cold start y los contadores **no se comparten entre invocaciones**:
+
+- Frena ráfagas contra una misma instancia caliente.
+- No bloquea brute force distribuido entre varios cold starts ni entre varias regiones.
+
+Para garantía completa contra distribuido, mover el store a Redis con [`rate-limit-redis`](https://www.npmjs.com/package/rate-limit-redis) (Upstash tiene tier gratis compatible con Vercel) y exponer la URL en una env var.
+
+Configuración actual: [Auth flujo § Rate limiting](../backend/auth-flujo.md#rate-limiting).
+
 ## Checklist pre-deploy
 
 - [ ] `NODE_ENV=production` en backend.
@@ -163,11 +257,11 @@ Plan gratuito: **10s** por function. Si `generarPagos` excede con muchos cliente
 
 ## Endpoints utilitarios
 
-| Ruta | Función |
-|------|---------|
-| `GET /api/health` | Estado server + Mongo readyState |
-| `GET /api/docs/spec` | JSON OpenAPI |
-| `GET /api/docs` | Swagger UI (dark mode con filter CSS) |
+| Ruta | Disponible | Función |
+|------|:----------:|---------|
+| `GET /api/health` | Siempre | Estado server + Mongo readyState |
+| `GET /api/docs/spec` | Solo dev | JSON OpenAPI |
+| `GET /api/docs` | Solo dev | Swagger UI (dark mode con filter CSS) |
 
 ## Lecturas relacionadas
 

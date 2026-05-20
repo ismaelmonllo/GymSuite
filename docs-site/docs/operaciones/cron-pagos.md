@@ -93,9 +93,13 @@ Respuesta esperada (segundo disparo del mismo mes):
 `verificarCronSecret`:
 
 ```js title="server/middleware/auth.js"
-const secret = req.headers['x-cron-secret'];
-if (!secret || secret !== process.env.CRON_SECRET) {
-  return res.status(401).json({ mensaje: 'No autorizado' });
+const recibido = req.headers['x-cron-secret'];
+const esperado = process.env.CRON_SECRET;
+if (!recibido || !esperado) return res.status(401).json({ mensaje: 'No autorizado' });
+const a = Buffer.from(recibido);
+const b = Buffer.from(esperado);
+if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ mensaje: 'No autorizado' });
 }
 next();
 ```

@@ -57,7 +57,7 @@ Para permitir **divergencia futura por rol** sin refactor masivo. Si mañana los
 
 Trade-off intencional. El frontend necesita leer el JWT de `document.cookie` para inyectarlo como `Authorization: Bearer` (estándar industria). Si fuera httpOnly, el backend tendría que leerlo de cookie en lugar de header — refactor grande de todos los controllers.
 
-El **refresh token** (más sensible) sí está en `httpOnly`. Robar el JWT acceso da 2h de impacto máximo, no permanente.
+El **refresh token** (más sensible) sí está en `httpOnly`. Robar el JWT acceso da 15m de impacto máximo, no permanente.
 
 Detalle: [ADR-007](../arquitectura/decisiones.md#jwt-js).
 

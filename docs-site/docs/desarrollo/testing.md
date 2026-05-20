@@ -7,15 +7,46 @@ tags: [desarrollo, testing]
 
 > ℹ️ **Estado actual**
 >
-> **GymSuite no tiene tests automatizados** (unit, integration, e2e). Las verificaciones se hacen manualmente vía login + flujos en el navegador y `curl` a los endpoints.
+> **Tests de fase 1 y 2 implementados.** Vitest instalado en `server/`. 40 tests pasando. Fases 3 (integration) y 4 (E2E) aún pendientes.
 
-Esta página documenta el plan de testing futuro y qué priorizar cuando se aborde.
+## Ejecutar tests
 
-## Por qué no hay tests todavía
+```bash
+cd GymSuite/server
+npm test          # vitest run (una vez)
+npm run test:watch  # modo watch
+```
+
+## Tests existentes — `server/__tests__/`
+
+### `validadores.test.js` — 34 tests
+
+Cubre las funciones atómicas de `validators/validarCampos.js`:
+
+| Grupo | Qué verifica |
+|-------|--------------|
+| `validarDNI` | DNI educativo (divisor `% 19`), longitud, sin letra, vacío |
+| `validarTelefono` | Prefijo educativo `5`, `+34` opcional, longitud |
+| `validarImporte` | Entero positivo, rechaza decimal / cero / negativo / string |
+| `validarObjectId` | Hex 24 chars, rechaza 23 chars, rechaza no-hex |
+| `validarMeses` | 1–24, rechaza 0, rechaza 25, rechaza decimal |
+| `validarCorreo` | Formato básico |
+| `validarContrasena` | 12+ chars, min/may/num/símbolo obligatorios |
+
+### `pagos.test.js` — 6 tests
+
+Cubre lógica de fechas y reparto de importes (la lógica de mayor riesgo):
+
+| Grupo | Qué verifica |
+|-------|--------------|
+| `formatearMes` | Enero/diciembre/septiembre con padding correcto |
+| `sumarMeses` | +1 mes, overflow diciembre → enero año siguiente, resta |
+| Reparto de importe | `1100/3` suma exacta, sin resto, con resto, múltiples casos |
+
+## Por qué no hay más tests todavía
 
 - Proyecto académico individual con plazo ajustado.
 - Iteración rápida; el coste de mantener tests con cada refactor era alto.
-- Backend y frontend cambiaron de arquitectura varias veces.
 
 ## Plan de testing
 
@@ -146,7 +177,7 @@ Sin tests, usar este checklist tras cambios grandes:
 
 ### Auth avanzada
 
-- [ ] Token expira 2h → refresh automático.
+- [ ] Token expira 15m → refresh automático.
 - [ ] Refresh expira 7d → logout automático.
 - [ ] Cambio forzoso de contraseña → modal bloquea, JWT nuevo cierra.
 

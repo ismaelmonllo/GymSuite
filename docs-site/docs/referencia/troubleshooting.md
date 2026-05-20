@@ -84,6 +84,12 @@ Ver [ADR-001](../arquitectura/decisiones.md#bcrypt-510).
 2. Setear `FRONTEND_URL` con ese valor exacto (sin trailing `/`).
 3. Redeploy backend.
 
+### "Función devuelve 500 con `Error: FRONTEND_URL es obligatoria en producción`"
+
+**Causa:** `NODE_ENV=production` está definida pero `FRONTEND_URL` no. El CORS es fail-closed (`api/index.js` lanza al arrancar) para evitar caer a un origen reflejado con `credentials: true`.
+
+**Solución:** setear `FRONTEND_URL` en Vercel → redeploy. Toda llamada a `/api/*` devuelve 500 hasta que la env var llegue.
+
 ### "`/api/health` devuelve 503 en prod"
 
 **Causa probable:** Atlas no conecta. Posibles:

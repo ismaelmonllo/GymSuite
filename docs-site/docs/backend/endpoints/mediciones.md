@@ -7,6 +7,19 @@ tags: [backend, api, mediciones]
 
 Endpoints bajo `/api/mediciones/*`. Controller: `server/controllers/medicionController.js`. Modelo: [Medicion](../modelos.md#mediciones). Cálculos: [Mediciones cálculo](../mediciones-calculo.md).
 
+## Control de acceso
+
+Los middlewares `verificarRol` filtran por rol; el controller añade ownership para cerrar el IDOR:
+
+| Endpoint | Acceso |
+|----------|--------|
+| `GET /api/mediciones` | Cliente; `id` siempre del JWT, no de params |
+| `GET /api/mediciones/cliente/:id_usuario` | Cualquier entrenador (gimnasio compartido) |
+| `GET /api/mediciones/:id` | Entrenador (cualquiera) o cliente solo si `cliente_id === req.usuario.id` |
+| `POST /api/mediciones` | Entrenador; `entrenador_id` inyectado del JWT |
+| `PUT /api/mediciones/:id` | Solo el entrenador con `entrenador_id === req.usuario.id` |
+| `DELETE /api/mediciones/:id` | Solo el entrenador con `entrenador_id === req.usuario.id` |
+
 <a id="get-apimediciones"></a>
 
 ## `GET /api/mediciones`
@@ -44,11 +57,17 @@ Mediciones de un cliente concreto (consulta del entrenador).
 
 Detalle de una medición concreta.
 
-**Permisos:** `verificarToken` + `verificarRol('cliente', 'entrenador')`.
+**Permisos:** `verificarToken` + `verificarRol('cliente', 'entrenador')`. Ownership: un cliente solo accede a mediciones con `cliente_id === req.usuario.id`; un entrenador puede leer cualquiera.
 
 **200:** objeto medición.
 
-**Errores:** 400 ID inválido, 404 no encontrada.
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| 400 | ID inválido |
+| 403 | `"Acceso denegado"` — cliente intentando leer una medición ajena |
+| 404 | No encontrada |
 
 <a id="post-apimediciones"></a>
 
@@ -85,7 +104,7 @@ Crea medición.
 
 Edita medición.
 
-**Permisos:** `verificarToken` + `verificarRol('entrenador')`.
+**Permisos:** `verificarToken` + `verificarRol('entrenador')`. Ownership: `entrenador_id === req.usuario.id`.
 
 **Body:** mismos campos opcionales. **`validarEditarMedicion` rechaza `cliente_id` y `entrenador_id`** — no se pueden cambiar.
 
@@ -96,6 +115,7 @@ Edita medición.
 | Código | Causa |
 |--------|-------|
 | 400 | `{ errores }` (incluye `cliente_id` o `entrenador_id` en body) |
+| 403 | `"Solo el entrenador que la registró puede modificarla"` |
 | 404 | No encontrada |
 
 <a id="delete-apimedicionesid"></a>
@@ -104,7 +124,7 @@ Edita medición.
 
 Borra medición.
 
-**Permisos:** `verificarToken` + `verificarRol('entrenador')`.
+**Permisos:** `verificarToken` + `verificarRol('entrenador')`. Ownership: `entrenador_id === req.usuario.id`.
 
 **200:**
 
@@ -112,7 +132,12 @@ Borra medición.
 { "mensaje": "Medición eliminada correctamente" }
 ```
 
-**404:** no encontrada.
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| 403 | `"Solo el entrenador que la registró puede eliminarla"` |
+| 404 | No encontrada |
 
 ## Rangos de validación
 

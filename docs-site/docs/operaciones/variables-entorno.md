@@ -16,13 +16,13 @@ Lista canónica de variables de entorno. Backend lee de `.env` (dev) o Vercel Se
 | `MONGODB_URI` | string | ✅ | ✅ | `mongodb+srv://usr:pwd@cluster.mongodb.net/gymsuite` |
 | `MONGODB_URI_BACKUP` | string | recomendada | recomendada | URI cluster de respaldo |
 
-`conectarDB()` intenta `MONGODB_URI`; si falla, prueba `MONGODB_URI_BACKUP`; si ambas fallan, `process.exit(1)`.
+`conectarDB()` intenta `MONGODB_URI`; si falla, prueba `MONGODB_URI_BACKUP`; si ambas fallan, el error se propaga y `errorHandler` responde 500. La conexión se cachea entre invocaciones serverless de Vercel.
 
 ### JWT y sesión
 
 | Variable | Tipo | Dev | Prod | Notas |
 |----------|------|:---:|:----:|-------|
-| `JWT_SECRET` | string ≥32 chars | ✅ | ✅ | Firma JWT acceso (2h). Generar con `crypto.randomBytes(32).toString('hex')` |
+| `JWT_SECRET` | string ≥32 chars | ✅ | ✅ | Firma JWT acceso (15m). Generar con `crypto.randomBytes(32).toString('hex')` |
 | `JWT_REFRESH_SECRET` | string ≥32 chars | ✅ | ✅ | **Distinto** de `JWT_SECRET`. Firma refresh (7d) |
 
 ### Cron
@@ -43,9 +43,10 @@ Lista canónica de variables de entorno. Backend lee de `.env` (dev) o Vercel Se
 | Variable | Tipo | Dev | Prod | Notas |
 |----------|------|:---:|:----:|-------|
 | `NODE_ENV` | string | no | `production` | Activa `sameSite=none, secure=true` en cookies |
-| `FRONTEND_URL` | URL | no | ✅ | Origen permitido para CORS |
+| `FRONTEND_URL` | URL | no | ✅ | Origen permitido para CORS. Obligatoria en `NODE_ENV=production`: si falta, la función aborta en cold start (CORS fail-closed) |
 | `PORT` | int | `5000` | (ignorado) | Solo dev |
 | `DISABLE_2FA` | string | opcional `'true'` | **NO setear** | Salta el OTP en login |
+| `BCRYPT_ROUNDS` | int | opcional | opcional | Rondas de bcrypt. Default 12 si no está definido. `authController.js` y `usuarioController.js` leen `Number(process.env.BCRYPT_ROUNDS) \|\| 12` |
 
 ## Frontend
 
@@ -100,9 +101,7 @@ Setear `NODE_ENV=production` en dev rompería el login local porque las cookies 
 
 ## Por qué `DISABLE_2FA=true` solo en dev
 
-Salta el OTP por email para iterar rápido. **Nunca** en prod — rompe el segundo factor.
-
-Verificar antes de cada deploy:
+Salta el OTP por email para iterar rápido. En producción (`NODE_ENV=production`) hay un guard en `authController.js` que ignora la flag aunque esté seteada — el 2FA siempre se exige. Aun así se recomienda no tenerla en Vercel:
 
 ```bash
 vercel env ls

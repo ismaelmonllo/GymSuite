@@ -16,7 +16,7 @@ Aplicación de **STRIDE light** a GymSuite. Para cada categoría: amenazas relev
 | Amenaza | Vector | Mitigación |
 |---------|--------|-----------|
 | Suplantar a otro usuario | Login con credenciales robadas | Contraseñas hasheadas (bcrypt 10 rounds) + 2FA por email |
-| Token robado | XSS o filtración cookie no-httpOnly | Refresh token httpOnly; JWT acceso vive 2h; 2FA cookie 30 días |
+| Token robado | XSS o filtración cookie no-httpOnly | Refresh token httpOnly; JWT acceso vive 15m; cookie `2fa_verificado` httpOnly, 7 días, firmada con HMAC sobre `id_usuario + hash(User-Agent)` — copiarla a otro navegador la invalida |
 | Cron API impersonado | Llamar `/generar-cron` sin permiso | Header `x-cron-secret` con valor secreto |
 
 ## T — Tampering (manipulación)
@@ -44,26 +44,30 @@ Aplicación de **STRIDE light** a GymSuite. Para cada categoría: amenazas relev
 
 | Amenaza | Vector | Mitigación |
 |---------|--------|-----------|
-| Filtrar emails / DNIs vía respuestas | Mensajes de error verbosos | Login devuelve "Credenciales inválidas" genérico (no distingue email no existe vs password mal) |
+| Filtrar emails / DNIs vía respuestas | Mensajes de error verbosos | Login devuelve 401 `"Credenciales incorrectas"` genérico para correo inexistente o contraseña mala, y compara siempre contra `HASH_DUMMY` (bcrypt precalculado) si el correo no existe para igualar la latencia |
 | Cliente ve datos de otro cliente | Llamar a `/api/clientes/perfil` con IDs ajenos | El controller lee `req.usuario.id`, ignora params |
+| Cliente lee mediciones de otro cliente | `GET /api/mediciones/:id` iterando ObjectIds | `obtenerMedicion` compara `medicion.cliente_id === req.usuario.id` cuando el rol es cliente, 403 si no coincide |
+| Entrenador edita/borra trabajo de otro entrenador | `PUT`/`DELETE /api/mediciones/:id` con id ajeno | Ownership en controller: `medicion.entrenador_id === req.usuario.id`; 403 si no |
 | Contraseñas en logs | `console.log` en controllers | Nunca loguear `req.body` completo en endpoints de auth |
 | Tráfico interceptado | HTTP plano | HTTPS obligatorio en prod (Vercel) |
 | `process.env` filtrado en cliente | Bundle Vite | Vite solo expone vars que empiezan por `VITE_` |
-| CORS abierto | Origen `*` con credentials | En prod, `cors({ origin: FRONTEND_URL, credentials: true })` |
+| CORS abierto | Origen `*` o `true` con credentials | En prod, `cors({ origin: [FRONTEND_URL], credentials: true })`. Si `FRONTEND_URL` falta en `NODE_ENV=production`, la función aborta al arrancar (fail-closed) — nunca cae a `origin: true` por accidente |
+| Clickjacking / MIME sniffing / leakage de Referer | Sin headers de seguridad | `helmet` añade `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security` y CSP |
 
 ## D — Denial of service
 
 | Amenaza | Vector | Mitigación |
 |---------|--------|-----------|
-| Spam de login | Probar contraseñas | bcrypt es **costoso por diseño** (10 rounds ≈ ms); 2FA mete latencia adicional |
+| Spam de login | Probar contraseñas | `limiteAuth` (5 req / 15 min por IP, compartido con `/verificar-2fa`); bcrypt 10 rounds añade coste por intento; 2FA mete latencia adicional |
 | Spam de creación de cuentas | Crear usuarios masivos | Solo admin/entrenador pueden crear |
 | Spam OTP | Pedir OTPs masivos | `findOneAndUpdate({ correo }, ..., upsert)` sobrescribe el anterior — no acumula |
+| Brute force del OTP | Probar las 10⁶ combinaciones en la ventana de 5 min | `Otp.intentos` se incrementa con `$inc` en cada fallo; al 5º intento `verificar2FA` borra el OTP y devuelve 429 obligando a relogin |
 | Generar cuotas masivas | POST `/generar` repetido | El controller filtra clientes con pago del mes existente (`distinct + Set`) — idempotente |
 | Vercel timeout | Función > 10s | Generación con muchos clientes podría exceder. Monitorizar |
 
-> ⚠️ **Sin rate limiting**
+> ℹ️ **Rate limiting**
 >
-> No hay `express-rate-limit` ni similar. Para producción real: añadir limit por IP en endpoints públicos (login, refresh, verificar-2fa).
+> `express-rate-limit` con tres limitadores: `limiteGlobal` (300 req / 15 min) a toda la API, `limiteAuth` (5 req / 15 min) en login y verificar-2fa, `limiteRefresh` (30 req / 15 min) en refresh. Store en memoria; en Vercel serverless no se comparte entre cold starts — para garantía completa contra brute force distribuido, mover store a Redis (Upstash). Detalle: [Auth flujo § Rate limiting](../backend/auth-flujo.md#rate-limiting).
 
 ## E — Elevation of privilege
 
@@ -79,11 +83,13 @@ Aplicación de **STRIDE light** a GymSuite. Para cada categoría: amenazas relev
 
 | Endpoint | Riesgo principal | Mitigación |
 |----------|------------------|-----------|
-| `POST /api/auth/login` | Brute force | bcrypt costoso, 2FA, sin rate limit (TODO) |
+| `POST /api/auth/login` | Brute force | `limiteAuth` (5 req / 15 min), bcrypt costoso, 2FA |
 | `POST /api/auth/refresh` | Robo refresh | `httpOnly` + `secure` + `sameSite` + 7d |
 | `POST /api/pagos/generar-cron` | Llamada no autorizada | `x-cron-secret` |
 | `POST /api/clientes` | Spam | Restringido a admin/entrenador |
 | `PATCH /api/auth/resetear-password/:id` | Reset masivo | Restringido a admin |
+| `GET /api/mediciones/:id` | IDOR cliente → cliente | Ownership: cliente solo ve `cliente_id === req.usuario.id` |
+| `PUT`/`DELETE /api/mediciones/:id` | Entrenador edita/borra mediciones ajenas | Ownership: `entrenador_id === req.usuario.id` |
 
 ## Lecturas relacionadas
 

@@ -13,7 +13,7 @@ Tres cookies en juego. Las del backend cambian de política según `NODE_ENV`.
 |--------|---------|:--------:|:----------------:|:---------------:|:-------------:|:------------:|------|
 | `token` | Frontend (`AuthContext`) | ❌ | `Strict` | `Strict` | (auto en HTTPS) | — | 2 h |
 | `refresh_token` | Backend (`authController`) | ✅ | `none` | `strict` | ✅ | ❌ | 7 d |
-| `2fa_verificado` | Backend (`verificar2FA`) | ✅ | `none` | `strict` | ✅ | ❌ | 30 d |
+| `2fa_verificado` | Backend (`verificar2FA`) | ✅ | `none` | `strict` | ✅ | ❌ | 7 d |
 
 ## Por qué `SameSite=none` en prod
 
@@ -49,13 +49,22 @@ res.cookie('refresh_token', refreshJwt, cookieOpciones);
 ### `2fa_verificado` (backend, en `verificar2FA`)
 
 ```js
-res.cookie('2fa_verificado', '1', {
+const valor = firmar2FA(usuario._id.toString(), req.headers['user-agent']);
+res.cookie('2fa_verificado', valor, {
   httpOnly: true,
   sameSite: NODE_ENV === 'production' ? 'none' : 'strict',
   secure: NODE_ENV === 'production',
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 });
 ```
+
+**Formato del valor:** `<usuarioId>.<uaHash16>.<firma32>`
+
+- `usuarioId` — `_id` del usuario en hex.
+- `uaHash16` — primeros 16 hex de `sha256(User-Agent)`.
+- `firma32` — primeros 32 hex de `HMAC-SHA256(JWT_REFRESH_SECRET, "<usuarioId>.<uaHash16>")`.
+
+`login` valida la cookie con `verificar2FACookie` recalculando la firma esperada y comparando con `crypto.timingSafeEqual`. Si la UA cambia (cookie copiada a otro navegador) o el cuerpo se altera, las firmas no cuadran y se descarta — el usuario pasa al flujo OTP normal.
 
 ## Cómo se borra
 
@@ -65,10 +74,12 @@ res.cookie('2fa_verificado', '1', {
 document.cookie = 'token=; path=/; max-age=0';
 ```
 
-### `refresh_token`
+### `refresh_token` y `2fa_verificado`
 
 ```js title="server/controllers/authController.js"
-res.clearCookie('refresh_token', cookieOpciones);  // MISMA config que al setear
+const opcionesBase = { httpOnly: true, sameSite, secure };
+res.clearCookie('refresh_token', opcionesBase);   // MISMA config que al setear
+res.clearCookie('2fa_verificado', opcionesBase);  // logout borra ambas
 ```
 
 > 🚨 **Opciones del clear DEBEN coincidir**

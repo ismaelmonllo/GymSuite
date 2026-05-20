@@ -20,11 +20,19 @@ Lista clientes filtrables.
 | `activo` | string | `'true'` \| `'false'` | Filtra por estado |
 | `nivel` | string | `principiante` \| `intermedio` \| `avanzado` | — |
 | `tipo_cuota` | ObjectId | — | Filtra por cuota |
+| `pagina` | number | entero ≥ 1 | Página (opcional) |
+| `limite` | number | 1–100 | Resultados por página (opcional, defecto 20) |
 
-**200:**
+**200 sin paginación** (parámetros `pagina`/`limite` ausentes):
 
 ```json
 { "clientes": [ { "_id": "...", "nombre": "...", ... } ] }
+```
+
+**200 con paginación:**
+
+```json
+{ "clientes": [ ... ], "total": 47, "pagina": 1, "limite": 20 }
 ```
 
 ## `GET /api/clientes/perfil`
@@ -125,11 +133,11 @@ El frontend abre `ModalReactivar` y permite al usuario dar de alta uno existente
 
 ## `PUT /api/clientes/:id`
 
-Edita un cliente. Ignora `rol`, `contrasena`, `fecha_alta` si vienen.
+Edita un cliente. Solo pasan al `$set` los campos de la whitelist `CAMPOS_EDITABLES_CLIENTE`: `nombre`, `apellidos`, `correo`, `telefono`, `direccion`, `fecha_nacimiento`, `DNI`, `sexo`, `nivel`. Cualquier otro campo del body (`activo`, `forzar_cambio_password`, `rol`, `tipo_cuota`, etc.) es ignorado.
 
 **Permisos:** `verificarToken` + `verificarRol('admin', 'entrenador')`.
 
-**Body:** mismos campos que crear (todos opcionales).
+**Body:** campos de la whitelist, todos opcionales.
 
 **200:** `{ mensaje, cliente }`.
 

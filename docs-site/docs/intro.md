@@ -11,7 +11,7 @@ GymSuite es una aplicación web para gimnasios que centraliza la gestión de **c
 
 ## Stack en una línea
 
-React + Tailwind (Vite) ↔ Express (Node 20) ↔ MongoDB Atlas. JWT 2h + refresh 7d (cookie httpOnly) + 2FA por email. Desplegado en Vercel como dos proyectos separados.
+React + Tailwind (Vite) ↔ Express (Node 20) ↔ MongoDB Atlas. JWT 15m + refresh 7d (cookie httpOnly) + 2FA por email. Desplegado en Vercel como dos proyectos separados.
 
 ## Roles
 

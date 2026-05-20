@@ -11,7 +11,7 @@ GymSuite usa dos tokens distintos: **JWT de acceso** (corto, en cookie JS-accesi
 
 | Token | Algoritmo | Secret | Vida | Dónde se guarda | Quién lo emite | Quién lo lee |
 |-------|-----------|--------|------|------------------|----------------|---------------|
-| **JWT acceso** | HS256 | `JWT_SECRET` | 2 h | Cookie `token` (no httpOnly) | Backend en `emitirTokens` | Frontend (lo inyecta como header `Authorization: Bearer`) |
+| **JWT acceso** | HS256 | `JWT_SECRET` | 15 min | Cookie `token` (no httpOnly) | Backend en `emitirTokens` | Frontend (lo inyecta como header `Authorization: Bearer`) |
 | **Refresh** | HS256 | `JWT_REFRESH_SECRET` | 7 d | Cookie `refresh_token` (httpOnly) | Backend en `emitirTokens` | Backend en `POST /api/auth/refresh` |
 
 ## Payload del JWT de acceso
@@ -62,7 +62,7 @@ sequenceDiagram
   FE->>Refresh: POST (cookie httpOnly refresh)
   Refresh->>Refresh: jwt.verify(refresh, JWT_REFRESH_SECRET)
   Refresh->>Refresh: User.findById(payload.id)
-  Refresh->>Refresh: firmar nuevo JWT acceso (2h)
+  Refresh->>Refresh: firmar nuevo JWT acceso (15m)
   Refresh-->>FE: 200 {token}
 ```
 
@@ -73,13 +73,13 @@ sequenceDiagram
 ### Cookie `token` (JWT acceso) — JS-accesible
 
 ```js
-document.cookie = `token=${jwt}; path=/; max-age=${2*60*60}; SameSite=Strict`;
+document.cookie = `token=${jwt}; path=/; max-age=${15*60}; SameSite=Strict`;
 ```
 
 | Atributo | Valor | Razón |
 |----------|-------|-------|
 | `path=/` | toda la app | — |
-| `max-age=7200` | 2 h | Alineado con `exp` del JWT |
+| `max-age=900` | 15 min | Alineado con `exp` del JWT |
 | `SameSite=Strict` | — | El frontend lo usa solo en peticiones same-origin (header `Authorization`) |
 | `httpOnly` | **NO** | El frontend debe leerlo desde JS para inyectarlo en headers |
 | `secure` | — | No setado por el frontend (lo añade el navegador automático en HTTPS) |
