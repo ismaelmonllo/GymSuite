@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 // Verificar que la petición incluye un token JWT válido y adjuntar los datos del usuario al request
 export const verificarToken = async (req, res, next) => {
@@ -40,18 +41,9 @@ export const forzarRolQuery = (rolEsperado) => (req, res, next) => {
 // Comprobar que el usuario autenticado tiene uno de los roles permitidos para la ruta
 // Se usa como middleware encadenado después de verificarToken
 export const verificarRol = (...roles) => (req, res, next) => {
-
-    try {
-
-        if (!roles.includes(req.usuario.rol)) return res.status(403).json({ mensaje: 'Acceso denegado' });
-
-        next();
-
-    } catch (error) {
-        return res.status(500).json({ mensaje: 'Error al verificar rol' });
-    }
-
-}
+    if (!roles.includes(req.usuario.rol)) return res.status(403).json({ mensaje: 'Acceso denegado' });
+    next();
+};
 
 // Permitir acceso si el usuario es admin, o si accede a su propio recurso por :id
 export const verificarPropioOAdmin = (req, res, next) => {
@@ -59,11 +51,26 @@ export const verificarPropioOAdmin = (req, res, next) => {
     return res.status(403).json({ mensaje: 'Acceso denegado' })
 }
 
+// Rechazar peticiones sin el header X-Requested-With: XMLHttpRequest
+// Un formulario HTML o fetch simple de otro origen no puede añadir headers personalizados sin pasar
+// por CORS preflight, que nuestro CORS bloquea — esto mitiga logout-CSRF y refresh-CSRF
+export const requiereCustomHeader = (req, res, next) => {
+    if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
+        return res.status(403).json({ mensaje: 'Petición no autorizada' });
+    }
+    next();
+};
+
 // Verificar que la petición viene de cron-job.org comprobando el header x-cron-secret
-// Solo para rutas de cron: no requiere JWT ni usuario autenticado
+// Comparación en tiempo constante para evitar timing attacks
 export const verificarCronSecret = (req, res, next) => {
-    const secret = req.headers['x-cron-secret'];
-    if (!secret || secret !== process.env.CRON_SECRET) {
+    const recibido = req.headers['x-cron-secret'];
+    const esperado = process.env.CRON_SECRET;
+    if (!recibido || !esperado) return res.status(401).json({ mensaje: 'No autorizado' });
+
+    const a = Buffer.from(recibido);
+    const b = Buffer.from(esperado);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
         return res.status(401).json({ mensaje: 'No autorizado' });
     }
     next();

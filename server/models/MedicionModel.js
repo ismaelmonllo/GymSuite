@@ -30,4 +30,6 @@ const medicionSchema = new mongoose.Schema({
     observaciones: { type: String }
 });
 
+medicionSchema.index({ cliente_id: 1, fecha: -1 });
+
 export default mongoose.model('Medicion', medicionSchema);

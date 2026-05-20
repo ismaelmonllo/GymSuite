@@ -15,4 +15,8 @@ const pagoSchema = new mongoose.Schema({
     grupo_pago: { type: mongoose.Schema.Types.ObjectId }, // Agrupa pagos de varios meses generados juntos
 });
 
+pagoSchema.index({ cliente_id: 1, mes: -1 });
+pagoSchema.index({ grupo_pago: 1 });
+pagoSchema.index({ mes: 1, pendiente: 1 });
+
 export default mongoose.model('Pago', pagoSchema);

@@ -253,8 +253,8 @@ export const validarConfirmarPago = (datos) => {
 // ─── TIPO CUOTA ──────────────────────────────────────────────────────────────
 
 /**
- * Valida los datos para crear o editar un tipo de cuota.
- * Todos los campos son obligatorios tanto en creación como en edición.
+ * Valida los datos para crear un tipo de cuota.
+ * Todos los campos son obligatorios.
  * @param {object} datos - { nombre, meses, importe }
  * @returns {{ valido: boolean, errores: { campo: string, error: string }[] }}
  */
@@ -264,6 +264,22 @@ export const validarTipoCuota = (datos) => {
     check(errores, 'nombre',  validarTextoGeneral(datos.nombre, 'El nombre'));
     check(errores, 'meses',   validarMeses(datos.meses));
     check(errores, 'importe', validarImporte(datos.importe));
+
+    return { valido: errores.length === 0, errores };
+};
+
+/**
+ * Valida los datos para editar un tipo de cuota.
+ * Ningún campo es obligatorio; solo se validan los presentes.
+ * @param {object} datos - { nombre?, meses?, importe? }
+ * @returns {{ valido: boolean, errores: { campo: string, error: string }[] }}
+ */
+export const validarEditarTipoCuota = (datos) => {
+    const errores = [];
+
+    if (datos.nombre  !== undefined) check(errores, 'nombre',  validarTextoGeneral(datos.nombre, 'El nombre'));
+    if (datos.meses   !== undefined) check(errores, 'meses',   validarMeses(datos.meses));
+    if (datos.importe !== undefined) check(errores, 'importe', validarImporte(datos.importe));
 
     return { valido: errores.length === 0, errores };
 };

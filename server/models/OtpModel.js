@@ -6,6 +6,8 @@ const otpSchema = new mongoose.Schema({
   correo: { type: String, required: true, index: true },
   codigo: { type: String, required: true },
   expira: { type: Date, required: true, expires: 0 },
+  // Contador de intentos fallidos para frenar brute force del OTP (10^6 combinaciones)
+  intentos: { type: Number, default: 0 },
 });
 
 const Otp = mongoose.model('Otp', otpSchema);

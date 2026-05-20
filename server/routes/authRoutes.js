@@ -1,9 +1,28 @@
 // Rutas de autenticación: gestionar el inicio de sesión de los usuarios
 import express from 'express';
-import { login, verificar2FA, refresh, logout, cambiarContrasena, resetearPassword } from '../controllers/authController.js';
-import { verificarToken, verificarRol } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
+import { login, verificar2FA, refresh, logout, cambiarContrasena, resetearPassword, restablecerPassword } from '../controllers/authController.js';
+import { verificarToken, verificarRol, requiereCustomHeader } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Rate limit estricto para credenciales y OTP: 5 intentos / 15 min por IP
+// Frena brute force sobre login y 2FA (10^6 combinaciones del OTP de 6 dígitos)
+const limiteAuth = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { mensaje: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+// Rate limit medio para refresh: el flujo legítimo lo dispara 1 vez por sesión cada ~2h
+const limiteRefresh = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -38,7 +57,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', login);
+router.post('/login', limiteAuth, login);
 
 /**
  * @swagger
@@ -75,7 +94,7 @@ router.post('/login', login);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/verificar-2fa', verificar2FA);
+router.post('/verificar-2fa', limiteAuth, verificar2FA);
 
 /**
  * @swagger
@@ -148,6 +167,8 @@ router.patch('/cambiar-contrasena', verificarToken, cambiarContrasena);
  */
 router.patch('/resetear-password/:id', verificarToken, verificarRol('admin'), resetearPassword);
 
+router.post('/restablecer-password', restablecerPassword);
+
 /**
  * @swagger
  * /auth/refresh:
@@ -169,7 +190,7 @@ router.patch('/resetear-password/:id', verificarToken, verificarRol('admin'), re
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/refresh', refresh);
+router.post('/refresh', requiereCustomHeader, limiteRefresh, refresh);
 
 /**
  * @swagger
@@ -189,6 +210,6 @@ router.post('/refresh', refresh);
  *                   type: string
  *                   example: Sesión cerrada
  */
-router.post('/logout', logout);
+router.post('/logout', requiereCustomHeader, logout);
 
 export default router;

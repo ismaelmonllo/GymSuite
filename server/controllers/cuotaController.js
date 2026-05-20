@@ -1,86 +1,72 @@
 import Cuota from '../models/TipoCuotaModel.js';
+import { validarTipoCuota, validarEditarTipoCuota } from '../validators/validarRegistros.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 // Devolver todas las cuotas disponibles para mostrarlas en el panel de admin o en el modal de cambio de cuota
-export const listarCuotas = async (req, res) => {
+export const listarCuotas = asyncHandler(async (_req, res) => {
 
-    try {
+    // Obtener todas las cuotas sin filtro; la colección suele tener pocos documentos
+    const cuotas = await Cuota.find();
+    return res.status(200).json({ cuotas });
 
-        // Obtener todas las cuotas sin filtro; la colección suele tener pocos documentos
-        const cuotas = await Cuota.find();
-        return res.status(200).json({ cuotas });
-
-    } catch (error) {
-
-        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
-
-    }
-
-}
+});
 
 // Crear una nueva cuota con nombre, duración en meses e importe total
-export const crearCuota = async (req, res) => {
+export const crearCuota = asyncHandler(async (req, res) => {
 
-    try {
+    // Extraer solo los campos necesarios para evitar que lleguen campos no deseados del body
+    const { nombre, meses, importe } = req.body;
 
-        // Extraer solo los campos necesarios para evitar que lleguen campos no deseados del body
-        const { nombre, meses, importe } = req.body;
+    // Validar los campos antes de instanciar el modelo
+    const { valido, errores } = validarTipoCuota({ nombre, meses, importe });
+    if (!valido) return res.status(400).json({ errores });
 
-        // Crear y guardar el documento; save() lanza excepción si falla la validación del modelo
-        const cuota = new Cuota({ nombre, meses, importe });
-        await cuota.save();
-        return res.status(201).json({ cuota });
+    // Crear y guardar el documento; save() lanza excepción si falla la validación del modelo
+    const cuota = new Cuota({ nombre, meses, importe });
+    await cuota.save();
+    return res.status(201).json({ cuota });
 
-    } catch (error) {
-
-        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
-
-    }
-
-}
+});
 
 // Actualizar los datos de una cuota existente; el id viene en los parámetros de la ruta
-export const editarCuota = async (req, res) => {
+export const editarCuota = asyncHandler(async (req, res) => {
 
-    try {
+    const cuota_id = req.params.id;
 
-        const cuota_id = req.params.id;
+    // Extraer solo los campos permitidos (whitelist)
+    const { nombre, meses, importe } = req.body;
+    const datos = Object.fromEntries(
+        Object.entries({ nombre, meses, importe }).filter(([, valor]) => valor !== undefined)
+    );
 
-        // { new: true } devuelve el documento ya actualizado, no el anterior
-        const cuotaActualizada = await Cuota.findByIdAndUpdate(
-            cuota_id,
-            req.body,
-            { new: true }
-        );
+    // Validar solo los campos presentes (edición parcial)
+    const { valido, errores } = validarEditarTipoCuota(datos);
+    if (!valido) return res.status(400).json({ errores });
 
-        // findByIdAndUpdate devuelve null si el id no existe
-        if (!cuotaActualizada) return res.status(404).json({ mensaje: 'Cuota no encontrada' });
+    // { new: true } devuelve el documento ya actualizado, no el anterior
+    // runValidators aplica las restricciones del schema también en updates
+    const cuotaActualizada = await Cuota.findByIdAndUpdate(
+        cuota_id,
+        { $set: datos },
+        { new: true, runValidators: true }
+    );
 
-        return res.status(200).json({ cuota: cuotaActualizada });
+    // findByIdAndUpdate devuelve null si el id no existe
+    if (!cuotaActualizada) return res.status(404).json({ mensaje: 'Cuota no encontrada' });
 
-    } catch (error) {
+    return res.status(200).json({ cuota: cuotaActualizada });
 
-        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
-
-    }
-
-}
+});
 
 // Eliminar una cuota por su id; el id viene en los parámetros de la ruta
-export const eliminarCuota = async (req, res) => {
+export const eliminarCuota = asyncHandler(async (req, res) => {
 
-    try {
+    const cuota_id = req.params.id;
 
-        const cuota_id = req.params.id;
+    // findByIdAndDelete devuelve null si el id no existe
+    const cuotaEliminada = await Cuota.findByIdAndDelete(cuota_id);
+    if (!cuotaEliminada) return res.status(404).json({ mensaje: 'Cuota no encontrada' });
 
-        // findByIdAndDelete devuelve null si el id no existe
-        const cuotaEliminada = await Cuota.findByIdAndDelete(cuota_id);
-        if (!cuotaEliminada) return res.status(404).json({ mensaje: 'Cuota no encontrada' });
+    return res.status(200).json({ cuota: cuotaEliminada });
 
-        return res.status(200).json({ cuota: cuotaEliminada });
-
-    } catch (error) {
-
-        res.status(500).json({ mensaje: 'Error en el servidor:' + error.message })
-
-    }
-}
+});

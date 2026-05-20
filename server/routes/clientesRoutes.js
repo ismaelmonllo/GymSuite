@@ -13,23 +13,39 @@ const router = express.Router();
  *     tags: [Clientes]
  *     parameters:
  *       - in: query
- *         name: buscar
- *         schema: { type: string }
- *       - in: query
  *         name: nivel
  *         schema: { type: string, enum: [principiante, intermedio, avanzado] }
  *       - in: query
  *         name: activo
  *         schema: { type: boolean }
+ *       - in: query
+ *         name: pagina
+ *         schema: { type: integer, minimum: 1 }
+ *         description: Página (activa paginación; devuelve total, pagina, limite además de clientes)
+ *       - in: query
+ *         name: limite
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
  *     responses:
  *       200:
  *         description: Lista de clientes
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Cliente'
+ *               type: object
+ *               properties:
+ *                 clientes:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Cliente'
+ *                 total:
+ *                   type: integer
+ *                   description: Solo presente si se usa paginación
+ *                 pagina:
+ *                   type: integer
+ *                   description: Solo presente si se usa paginación
+ *                 limite:
+ *                   type: integer
+ *                   description: Solo presente si se usa paginación
  */
 router.get('/', verificarToken, verificarRol('admin', 'entrenador'), listarClientes);
 
@@ -52,9 +68,14 @@ router.get('/perfil', verificarToken, verificarRol('cliente'), obtenerMiPerfil);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Cliente'
+ *               type: object
+ *               properties:
+ *                 cliente:
+ *                   $ref: '#/components/schemas/Cliente'
+ *       400:
+ *         description: ID no válido
  *       404:
- *         description: Cliente no encontrado
+ *         description: Cliente no encontrado o no es de rol cliente
  */
 router.get('/:id', verificarToken, verificarRol('admin', 'entrenador'), verCliente);
 

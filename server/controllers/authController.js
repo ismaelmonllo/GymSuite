@@ -1,11 +1,14 @@
-import User from '../models/UsuarioModel.js';
+import Usuario from '../models/UsuarioModel.js';
 import Otp from '../models/OtpModel.js';
+import ResetToken from '../models/ResetTokenModel.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { validarLogin, validarCambioContrasenaPropio } from '../validators/validarRegistros.js';
-import { sendMail } from '../utils/mailer.js';
-import { generarPasswordTemporal } from '../utils/passwords.js';
+import { validarObjectId } from '../validators/validarCampos.js';
+import { sendMail, escaparHtml, emailTemplate } from '../utils/mailer.js';
+import { auditar } from '../utils/audit.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 // Opciones de cookie para el refresh token: ajustar sameSite/secure según entorno
 const cookieOpciones = {
@@ -15,11 +18,48 @@ const cookieOpciones = {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
 };
 
+// Hash dummy generado al arrancar el módulo: se compara contra él cuando el correo no existe
+// para que el tiempo de respuesta sea similar al de un correo válido y no se filtre la existencia
+const HASH_DUMMY = bcrypt.hashSync('dummy', 10);
+
 // Generar código OTP numérico de 6 dígitos usando un PRNG criptográficamente seguro
 // crypto.randomInt evita patrones predecibles de Math.random
 const generarOTP = () => String(crypto.randomInt(100000, 1000000));
 
-// Emitir JWT de acceso (2h) y refresh token en cookie httpOnly (7d)
+// Opciones de la cookie de dispositivo de confianza 2FA: 7 días (compromiso UX vs seguridad)
+const cookie2FAOpciones = {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+// Firmar la cookie 2fa_verificado atándola al usuario y a un hash del Usuario-Agent
+// El formato es `<usuarioId>.<uaHash16>.<firma32>` para que copiar la cookie a otro navegador
+// (UA distinta) la invalide sin necesidad de mantener estado en servidor
+const firmar2FA = (usuarioId, userAgent) => {
+    const uaHash = crypto.createHash('sha256').update(userAgent ?? '').digest('hex').slice(0, 16);
+    const datos = `${usuarioId}.${uaHash}`;
+    const firma = crypto
+        .createHmac('sha256', process.env.JWT_REFRESH_SECRET)
+        .update(datos)
+        .digest('hex')
+        .slice(0, 32);
+    return `${datos}.${firma}`;
+};
+
+// Verificar la cookie 2fa_verificado en tiempo constante; cualquier alteración o cambio de UA falla
+const verificar2FACookie = (cookie, usuarioId, userAgent) => {
+    if (!cookie) return false;
+    if (cookie.split('.').length !== 3) return false;
+    const esperada = firmar2FA(usuarioId, userAgent);
+    const a = Buffer.from(cookie);
+    const b = Buffer.from(esperada);
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+};
+
+// Emitir JWT de acceso (15m) y refresh token en cookie httpOnly (7d)
 const emitirTokens = (usuario, res) => {
     const userToken = jwt.sign(
         {
@@ -30,7 +70,7 @@ const emitirTokens = (usuario, res) => {
             forzar_cambio_password: !!usuario.forzar_cambio_password,
         },
         process.env.JWT_SECRET,
-        { expiresIn: '2h' }
+        { expiresIn: '15m' }
     );
     const refreshToken = jwt.sign(
         { id: usuario._id },
@@ -42,217 +82,290 @@ const emitirTokens = (usuario, res) => {
 };
 
 // Iniciar sesión: validar credenciales y comprobar si se necesita 2FA
-export const login = async (req, res) => {
-    
-    try {
-        const { correo, contrasena, tab } = req.body;
+export const login = asyncHandler(async (req, res) => {
 
-        // Validar formato de los datos antes de consultar la base de datos
-        const { valido, errores } = validarLogin({ correo, contrasena });
-        if (!valido) return res.status(400).json({ mensaje: 'Datos inválidos', errores });
+    const { correo, contrasena, tab } = req.body;
 
-        // Buscar el usuario por correo
-        const usuario = await User.findOne({ correo });
-        if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    // Validar formato de los datos antes de consultar la base de datos
+    const { valido, errores } = validarLogin({ correo, contrasena });
+    if (!valido) return res.status(400).json({ mensaje: 'Datos inválidos', errores });
 
-        // Comparar la contraseña recibida con el hash almacenado en la base de datos
-        const coincide = await bcrypt.compare(contrasena, usuario.contrasena);
-        if (!coincide) return res.status(401).json({ mensaje: 'Credenciales incorrectas' });
+    // Buscar el usuario por correo; incluir contrasena explícitamente (select:false en schema)
+    const usuario = await Usuario.findOne({ correo }).select('+contrasena');
 
-        // Si 2FA está desactivado por variable de entorno (solo para desarrollo), emitir tokens directamente
-        // En este modo el frontend sigue validando la pestaña en completarLogin
-        if (process.env.DISABLE_2FA === 'true') {
-            const token = emitirTokens(usuario, res);
-            return res.status(200).json({ token });
-        }
-
-        // Validar que el rol del usuario corresponde a la pestaña desde la que intenta entrar
-        const rolValido =
-            tab === 'cliente' ? usuario.rol === 'cliente' :
-            tab === 'trabajador' ? usuario.rol === 'admin' || usuario.rol === 'entrenador' :
-            false;
-        if (!rolValido) {
-            return res.status(403).json({
-                mensaje: tab === 'cliente'
-                    ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
-                    : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.',
-            });
-        }
-
-        // Si el dispositivo ya verificó 2FA en los últimos 30 días, emitir tokens directamente
-        if (req.cookies?.['2fa_verificado']) {
-            const token = emitirTokens(usuario, res);
-            return res.status(200).json({ token });
-        }
-
-        // Generar OTP, guardarlo en BD con 5 minutos de expiración y enviarlo por email
-        // findOneAndUpdate con upsert sobrescribe cualquier OTP previo del mismo correo
-        const codigo = generarOTP();
-        const expira = new Date(Date.now() + 5 * 60 * 1000);
-        await Otp.findOneAndUpdate({ correo }, { codigo, expira }, { upsert: true });
-
-        await sendMail({
-            to: correo,
-            subject: 'Tu código de verificación - GymSuite',
-            html: `
-                <p>Tu código de verificación es:</p>
-                <h2 style="letter-spacing: 4px;">${codigo}</h2>
-                <p>Caduca en 5 minutos.</p>
-            `,
-        });
-
-        return res.status(200).json({ requiere2FA: true });
-
-    } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
+    // Comparar siempre contra un hash (real si existe, dummy si no) para que el tiempo de
+    // respuesta no permita enumerar correos válidos y la respuesta sea genérica
+    const hashAComparar = usuario?.contrasena ?? HASH_DUMMY;
+    const coincide = await bcrypt.compare(contrasena, hashAComparar);
+    if (!usuario || !coincide) {
+        await auditar('login_fail', req, { correo });
+        return res.status(401).json({ mensaje: 'Credenciales incorrectas' });
     }
-};
 
-// Verificar el código OTP recibido por email y completar el login
-export const verificar2FA = async (req, res) => {
-    try {
-        const { correo, codigo } = req.body;
-        if (!correo || !codigo) return res.status(400).json({ mensaje: 'Faltan datos' });
+    // Bloquear acceso a usuarios dados de baja (campo activo: false)
+    // Comprobado tras la contraseña para no filtrar el estado a quien no tiene credenciales válidas
+    if (!usuario.activo) return res.status(403).json({ mensaje: 'Cuenta deshabilitada' });
 
-        const entrada = await Otp.findOne({ correo });
-
-        // Comprobar que existe un OTP pendiente para este correo
-        if (!entrada) return res.status(401).json({ mensaje: 'Código no encontrado o ya usado' });
-
-        // Comprobar si el OTP ha expirado (defensa adicional al índice TTL, que puede tardar segundos)
-        if (Date.now() > entrada.expira.getTime()) {
-            await Otp.deleteOne({ correo });
-            return res.status(401).json({ mensaje: 'Código expirado' });
-        }
-
-        // Comprobar que el código coincide
-        if (entrada.codigo !== codigo) return res.status(401).json({ mensaje: 'Código incorrecto' });
-
-        // OTP válido: eliminar de BD para que no pueda reutilizarse
-        await Otp.deleteOne({ correo });
-
-        const usuario = await User.findOne({ correo });
-        if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
-
-        // Marcar este dispositivo como verificado durante 30 días
-        res.cookie('2fa_verificado', '1', {
-            httpOnly: true,
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días en ms
-        });
-
+    // Si 2FA está desactivado por variable de entorno, emitir tokens directamente
+    // Guard de producción: ignorar la flag si NODE_ENV=production para evitar que un
+    // descuido de configuración deje el 2FA desactivado en producción
+    if (process.env.DISABLE_2FA === 'true' && process.env.NODE_ENV !== 'production') {
+        await auditar('login_ok', req, { correo, metodo: 'sin_2fa_dev' });
         const token = emitirTokens(usuario, res);
         return res.status(200).json({ token });
-
-    } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
     }
-};
+
+    // Validar que el rol del usuario corresponde a la pestaña desde la que intenta entrar
+    const rolValido =
+        tab === 'cliente' ? usuario.rol === 'cliente' :
+        tab === 'trabajador' ? usuario.rol === 'admin' || usuario.rol === 'entrenador' :
+        false;
+    if (!rolValido) {
+        return res.status(403).json({
+            mensaje: tab === 'cliente'
+                ? 'Esta cuenta no es de cliente. Usa la pestaña Trabajador.'
+                : 'Esta cuenta no es de trabajador. Usa la pestaña Cliente.',
+        });
+    }
+
+    // Si el dispositivo ya verificó 2FA en los últimos 7 días, emitir tokens directamente.
+    // La cookie va firmada con id_usuario + hash(Usuario-Agent): copiarla a otro navegador la invalida.
+    const cookie2FA = req.cookies?.['2fa_verificado'];
+    if (cookie2FA && verificar2FACookie(cookie2FA, usuario._id.toString(), req.headers['user-agent'])) {
+        await auditar('login_ok', req, { correo, metodo: 'dispositivo_confianza' });
+        const token = emitirTokens(usuario, res);
+        return res.status(200).json({ token });
+    }
+
+    // Generar OTP, guardarlo en BD con 5 minutos de expiración y enviarlo por email
+    // findOneAndUpdate con upsert sobrescribe cualquier OTP previo del mismo correo
+    const codigo = generarOTP();
+    const expira = new Date(Date.now() + 5 * 60 * 1000);
+    await Otp.findOneAndUpdate({ correo }, { codigo, expira }, { upsert: true });
+
+    await sendMail({
+        to: correo,
+        subject: 'Tu código de verificación - GymSuite',
+        html: emailTemplate('Código de verificación', `
+            <p style="margin:0 0 20px 0;color:#FDEBD0;font-size:15px;line-height:1.6;">
+                Introduce este código para completar tu inicio de sesión:
+            </p>
+            <div style="background-color:#1A1A1A;border:2px solid #E5702A;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;">
+                <span style="font-size:36px;font-weight:bold;letter-spacing:10px;color:#F09540;font-family:monospace;">${codigo}</span>
+            </div>
+            <p style="margin:0;color:#888;font-size:13px;">Caduca en 5 minutos. Si no iniciaste sesión, ignora este correo.</p>
+        `),
+    });
+
+    return res.status(200).json({ requiere2FA: true });
+
+});
+
+// Verificar el código OTP recibido por email y completar el login
+export const verificar2FA = asyncHandler(async (req, res) => {
+
+    const { correo, codigo } = req.body;
+    if (!correo || !codigo) return res.status(400).json({ mensaje: 'Faltan datos' });
+
+    const entrada = await Otp.findOne({ correo });
+
+    // Comprobar que existe un OTP pendiente para este correo
+    if (!entrada) return res.status(401).json({ mensaje: 'Código no encontrado o ya usado' });
+
+    // Tras 5 intentos fallidos, invalidar el OTP y forzar a relogear (genera uno nuevo)
+    // Sin este corte, 10^6 combinaciones del código son brute-forceables en 5 min con paralelismo
+    if (entrada.intentos >= 5) {
+        await Otp.deleteOne({ correo });
+        await auditar('2fa_fail', req, { correo, motivo: 'max_intentos' });
+        return res.status(429).json({ mensaje: 'Demasiados intentos. Vuelve a iniciar sesión.' });
+    }
+
+    // Comprobar si el OTP ha expirado (defensa adicional al índice TTL, que puede tardar segundos)
+    if (Date.now() > entrada.expira.getTime()) {
+        await Otp.deleteOne({ correo });
+        await auditar('2fa_fail', req, { correo, motivo: 'expirado' });
+        return res.status(401).json({ mensaje: 'Código expirado' });
+    }
+
+    // Comprobar que el código coincide; cada fallo incrementa el contador para llegar al corte de 5
+    if (entrada.codigo !== codigo) {
+        await Otp.updateOne({ correo }, { $inc: { intentos: 1 } });
+        await auditar('2fa_fail', req, { correo, motivo: 'codigo_incorrecto' });
+        return res.status(401).json({ mensaje: 'Código incorrecto' });
+    }
+
+    // OTP válido: eliminar de BD para que no pueda reutilizarse
+    await Otp.deleteOne({ correo });
+
+    const usuario = await Usuario.findOne({ correo });
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+    // Marcar este dispositivo como verificado durante 7 días con cookie firmada
+    // El valor encapsula id_usuario + hash(Usuario-Agent) firmado con HMAC: si se copia a otro
+    // navegador la UA cambia y la firma deja de cuadrar
+    const valor2FA = firmar2FA(usuario._id.toString(), req.headers['user-agent']);
+    res.cookie('2fa_verificado', valor2FA, cookie2FAOpciones);
+
+    await auditar('2fa_ok', req, { correo });
+    const token = emitirTokens(usuario, res);
+    return res.status(200).json({ token });
+
+});
 
 // Renovar el token de acceso usando el refresh token almacenado en la cookie
-export const refresh = async (req, res) => {
+export const refresh = asyncHandler(async (req, res) => {
+
+    const refreshToken = req.cookies?.refresh_token;
+    if (!refreshToken) return res.status(401).json({ mensaje: 'Sin refresh token' });
+
+    // Verificar la firma y expiración del refresh token
+    // El try/catch interno es intencional: jwt.verify lanza si el token es inválido o está expirado
+    // y queremos devolver 401, no dejar que llegue al errorHandler como 500
+    let payload;
     try {
-        const refreshToken = req.cookies?.refresh_token;
-        if (!refreshToken) return res.status(401).json({ mensaje: 'Sin refresh token' });
-
-        // Verificar la firma y expiración del refresh token
-        let payload;
-        try {
-            payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        } catch {
-            return res.status(401).json({ mensaje: 'Refresh token inválido o expirado' });
-        }
-
-        // Buscar el usuario para incluir datos actualizados en el nuevo token de acceso
-        const usuario = await User.findById(payload.id);
-        if (!usuario) return res.status(401).json({ mensaje: 'Usuario no encontrado' });
-
-        const userToken = jwt.sign(
-            {
-                id: usuario._id,
-                rol: usuario.rol,
-                nombre: usuario.nombre,
-                apellidos: usuario.apellidos,
-                forzar_cambio_password: !!usuario.forzar_cambio_password,
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '2h' }
-        );
-
-        return res.status(200).json({ token: userToken });
-
-    } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
+        payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch {
+        return res.status(401).json({ mensaje: 'Refresh token inválido o expirado' });
     }
-};
+
+    // Buscar el usuario para incluir datos actualizados en el nuevo token de acceso
+    // Rechazar también si está dado de baja: cierra la sesión 7d del refresh para usuarios desactivados
+    const usuario = await Usuario.findById(payload.id);
+    if (!usuario || !usuario.activo) return res.status(401).json({ mensaje: 'Sesión inválida' });
+
+    const userToken = jwt.sign(
+        {
+            id: usuario._id,
+            rol: usuario.rol,
+            nombre: usuario.nombre,
+            apellidos: usuario.apellidos,
+            forzar_cambio_password: !!usuario.forzar_cambio_password,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
+    );
+
+    return res.status(200).json({ token: userToken });
+
+});
 
 // Cambiar contraseña propia: verificar la actual, validar la nueva y actualizarla en BD
-export const cambiarContrasena = async (req, res) => {
-    try {
-        const { contrasenaActual, contrasenaNueva } = req.body;
+export const cambiarContrasena = asyncHandler(async (req, res) => {
 
-        const { valido, errores } = validarCambioContrasenaPropio({ contrasenaActual, contrasenaNueva, confirmacion: contrasenaNueva });
-        if (!valido) return res.status(400).json({ errores });
+    const { contrasenaActual, contrasenaNueva } = req.body;
 
-        const usuario = await User.findById(req.usuario.id);
-        if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    const { valido, errores } = validarCambioContrasenaPropio({ contrasenaActual, contrasenaNueva, confirmacion: contrasenaNueva });
+    if (!valido) return res.status(400).json({ errores });
 
-        // Comprobar que la contraseña actual introducida coincide con el hash almacenado
-        const coincide = await bcrypt.compare(contrasenaActual, usuario.contrasena);
-        if (!coincide) return res.status(401).json({ mensaje: 'La contraseña actual no es correcta' });
+    // Incluir contrasena explícitamente para comparar con bcrypt (select:false en schema)
+    const usuario = await Usuario.findById(req.usuario.id).select('+contrasena');
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
 
-        // Cambiar la contraseña y desactivar el flag de cambio forzoso (si lo tenía activo por alta o reseteo)
-        // Emitimos un token nuevo con el flag actualizado para que el frontend pueda continuar sin reloguear
-        const hash = await bcrypt.hash(contrasenaNueva, 10);
-        const usuarioActualizado = await User.findByIdAndUpdate(
-            req.usuario.id,
-            { contrasena: hash, forzar_cambio_password: false },
-            { new: true }
-        );
+    // Comprobar que la contraseña actual introducida coincide con el hash almacenado
+    const coincide = await bcrypt.compare(contrasenaActual, usuario.contrasena);
+    if (!coincide) return res.status(401).json({ mensaje: 'La contraseña actual no es correcta' });
 
-        const token = emitirTokens(usuarioActualizado, res);
-        return res.status(200).json({ ok: true, token });
-    } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
+    // Cambiar la contraseña y desactivar el flag de cambio forzoso (si lo tenía activo por alta o reseteo)
+    // Emitimos un token nuevo con el flag actualizado para que el frontend pueda continuar sin reloguear
+    const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 12;
+    const hash = await bcrypt.hash(contrasenaNueva, SALT_ROUNDS);
+    const usuarioActualizado = await Usuario.findByIdAndUpdate(
+        req.usuario.id,
+        { contrasena: hash, forzar_cambio_password: false },
+        { new: true }
+    );
+
+    await auditar('password_change', req, { usuario_id: req.usuario.id });
+    const token = emitirTokens(usuarioActualizado, res);
+    return res.status(200).json({ ok: true, token });
+
+});
+
+// Resetear contraseña: generar un token de un solo uso, guardarlo en BD y enviar el link por email
+// El link caduca en 30 min; la contraseña actual del usuario no cambia hasta que use el link
+export const resetearPassword = asyncHandler(async (req, res) => {
+
+    const { valido } = validarObjectId(req.params.id);
+    if (!valido) return res.status(400).json({ mensaje: 'ID no válido' });
+
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+    // Generar token criptográfico y guardar con expiración de 30 min
+    const token = crypto.randomBytes(32).toString('hex');
+    const expira = new Date(Date.now() + 30 * 60 * 1000);
+    await ResetToken.findOneAndUpdate(
+        { usuario_id: usuario._id },
+        { token, expira },
+        { upsert: true }
+    );
+
+    const url = `${process.env.FRONTEND_URL}/restablecer/${token}`;
+    await sendMail({
+        to: usuario.correo,
+        subject: 'Restablece tu contraseña - GymSuite',
+        html: emailTemplate('Restablece tu contraseña', `
+            <p style="margin:0 0 16px 0;color:#FDEBD0;font-size:15px;line-height:1.6;">
+                Hola, <strong style="color:#F09540;">${escaparHtml(usuario.nombre)}</strong>.
+            </p>
+            <p style="margin:0 0 24px 0;color:#FDEBD0;font-size:15px;line-height:1.6;">
+                Un administrador ha solicitado el restablecimiento de tu contraseña en GymSuite.
+                Haz clic en el botón para establecer una nueva (caduca en 30 minutos):
+            </p>
+            <div style="text-align:center;margin:0 0 24px 0;">
+                <a href="${url}" style="display:inline-block;background-color:#E5702A;color:#1A1A1A;font-weight:bold;font-size:15px;text-decoration:none;padding:14px 32px;border-radius:6px;">
+                    Restablecer contraseña
+                </a>
+            </div>
+            <p style="margin:0;color:#888;font-size:13px;">
+                Si el botón no funciona, copia este enlace en tu navegador:<br>
+                <a href="${url}" style="color:#F09540;word-break:break-all;">${url}</a>
+            </p>
+            <p style="margin:16px 0 0 0;color:#888;font-size:13px;">Si no esperabas este correo, ignóralo — tu contraseña actual no ha cambiado.</p>
+        `),
+    });
+
+    await auditar('password_reset_admin', req, { correo: usuario.correo, usuario_id: usuario._id });
+    return res.status(200).json({ ok: true });
+
+});
+
+// Restablecer contraseña usando el token del link enviado por email
+// El token se borra tras usarse para que no pueda reutilizarse
+export const restablecerPassword = asyncHandler(async (req, res) => {
+
+    const { token, contrasenaNueva } = req.body;
+    if (!token) return res.status(400).json({ mensaje: 'Token requerido' });
+    if (!contrasenaNueva || contrasenaNueva.length < 8)
+        return res.status(400).json({ mensaje: 'La contraseña debe tener al menos 8 caracteres' });
+
+    // Buscar el token y verificar que no ha expirado (el TTL puede tardar segundos en limpiar)
+    const entrada = await ResetToken.findOne({ token });
+    if (!entrada) return res.status(400).json({ mensaje: 'El enlace no es válido o ya fue usado' });
+    if (Date.now() > entrada.expira.getTime()) {
+        await ResetToken.deleteOne({ token });
+        return res.status(400).json({ mensaje: 'El enlace ha caducado. Solicita uno nuevo.' });
     }
-};
 
-// Resetear contraseña: generar una temporal, actualizarla en BD y enviarla al usuario por email
-// Activa el flag de cambio forzoso para que el usuario tenga que cambiarla en su próximo login
-export const resetearPassword = async (req, res) => {
-    try {
-        const usuario = await User.findById(req.params.id);
-        if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    // Actualizar contraseña y limpiar el token de un solo uso
+    const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 12;
+    const hash = await bcrypt.hash(contrasenaNueva, SALT_ROUNDS);
+    await Usuario.findByIdAndUpdate(entrada.usuario_id, { contrasena: hash, forzar_cambio_password: false });
+    await ResetToken.deleteOne({ token });
 
-        const passwordTemporal = generarPasswordTemporal();
-        const hash = await bcrypt.hash(passwordTemporal, 10);
-        await User.findByIdAndUpdate(req.params.id, { contrasena: hash, forzar_cambio_password: true });
+    return res.status(200).json({ ok: true });
 
-        await sendMail({
-            to: usuario.correo,
-            subject: 'Tu contraseña ha sido restablecida - GymSuite',
-            html: `
-                <p>Hola ${usuario.nombre},</p>
-                <p>Un administrador ha restablecido tu contraseña en GymSuite.</p>
-                <p>Tu contraseña temporal es:</p>
-                <h2 style="letter-spacing: 4px; font-family: monospace;">${passwordTemporal}</h2>
-                <p>Por seguridad, deberás cambiarla nada más iniciar sesión.</p>
-            `,
-        });
+});
 
-        return res.status(200).json({ ok: true });
-    } catch (error) {
-        res.status(500).json({ mensaje: 'Error en el servidor: ' + error.message });
-    }
-};
-
-// Cerrar sesión: eliminar la cookie del refresh token del navegador
-export const logout = (req, res) => {
-    res.clearCookie('refresh_token', {
+// Cerrar sesión: eliminar las cookies de refresh y de dispositivo de confianza 2FA
+// Las opciones deben coincidir con las del set para que el navegador acepte el borrado
+export const logout = (_req, res) => {
+    const opcionesBase = {
         httpOnly: true,
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         secure: process.env.NODE_ENV === 'production',
-    });
+    };
+    res.clearCookie('refresh_token', opcionesBase);
+    res.clearCookie('2fa_verificado', opcionesBase);
     return res.status(200).json({ mensaje: 'Sesión cerrada' });
 };
