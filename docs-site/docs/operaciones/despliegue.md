@@ -28,7 +28,7 @@ graph LR
 | **Root Directory** | `GymSuite` |
 | **Entry point** | `server/api/index.js` (auto-detectado por patrón `/api/*`) |
 | **Config** | `vercel.json` en raíz del repo |
-| **Build** | `npm install` (sin build step — Node ESM) |
+| **Build** | `cd server && npm install && node seed-primer-admin.js` (ver abajo) |
 
 ### Variables de entorno (Vercel → Settings → Environment Variables)
 
@@ -48,12 +48,35 @@ graph LR
 
 Detalle completo: [Variables de entorno](./variables-entorno.md).
 
+### Seed primer admin (automático en deploy)
+
+`vercel.json` define un `buildCommand` que corre antes de que Vercel despliegue la función:
+
+```json title="vercel.json"
+"buildCommand": "cd server && npm install && node seed-primer-admin.js"
+```
+
+`seed-primer-admin.js` es idempotente:
+- Conecta a `MONGODB_URI`; si falla, intenta `MONGODB_URI_BACKUP`.
+- Si la BD ya tiene usuarios → sale sin tocar nada.
+- Si la BD está vacía → crea el primer admin.
+
+| Campo | Valor |
+|-------|-------|
+| Correo | `isma01mm@gmail.com` |
+| Contraseña inicial | `Admin1234` |
+| `forzar_cambio_password` | `true` (se pide cambio en el primer login) |
+
+:::note npm install explícito
+`buildCommand` corre antes de que `@vercel/node` instale las deps de `server/`. El `npm install` dentro del comando garantiza que `bcrypt`, `mongoose` y `dotenv` estén disponibles cuando el seed se ejecuta.
+:::
+
 ### Pasos
 
 1. Crear proyecto Vercel desde el repo.
 2. **Root Directory:** `GymSuite`.
 3. Añadir variables de entorno.
-4. Deploy.
+4. Deploy (el seed crea el admin automáticamente si la BD está vacía).
 5. Verificar `https://<backend>.vercel.app/api/health` → `{ "estado": "ok", "mongo": "conectado" }`.
 
 ## Frontend
@@ -254,6 +277,7 @@ Configuración actual: [Auth flujo § Rate limiting](../backend/auth-flujo.md#ra
 - [ ] Login completo (con 2FA por email) funciona end-to-end.
 - [ ] `/api/health` responde OK.
 - [ ] Cron-job.org configurado y probado.
+- [ ] Primer deploy en BD vacía: verificar que el seed crea el admin y que el login fuerza cambio de contraseña.
 
 ## Endpoints utilitarios
 

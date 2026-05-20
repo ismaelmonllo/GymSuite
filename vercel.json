@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "cd server && npm install && node seed-primer-admin.js",
   "builds": [
     {
       "src": "server/api/index.js",
