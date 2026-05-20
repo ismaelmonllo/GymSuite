@@ -43,10 +43,7 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
       : `/api/pagos/cliente/${cliente._id}`
     api.get(endpoint)
       .then(res => setPagos(res.data))
-      .catch(err => {
-        // 404 significa sin pagos aún; cualquier otro error se registra
-        if (err.response?.status !== 404) console.error('Error cargando pagos:', err)
-      })
+      .catch(err => console.error('Error cargando pagos:', err))
       .finally(() => setCargando(false))
   }, [cliente._id, soloLectura])
 

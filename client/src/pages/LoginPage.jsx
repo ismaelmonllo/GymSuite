@@ -6,13 +6,7 @@ import Header from '../components/layout/Header'
 import CardLogin from '../components/auth/CardLogin'
 import Modal2FA from '../components/auth/Modal2FA'
 import { color } from '../styles'
-
-// Rutas a las que se redirige según el rol tras un login exitoso
-const RUTAS_ROL = {
-  admin: '/admin',
-  entrenador: '/entrenador',
-  cliente: '/cliente',
-}
+import { RUTAS_ROL } from '../constants'
 
 // Comprobar que el rol del token coincide con la pestaña seleccionada en el formulario.
 // Evita que un trabajador entre por la pestaña Cliente y viceversa, aunque las credenciales sean correctas.

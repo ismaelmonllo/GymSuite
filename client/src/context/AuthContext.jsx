@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { createContext, useState, useEffect, useCallback } from 'react'
 import api, { setSesionExpiradaCallback } from '../services/api'
-import { AuthContext } from './authContext'
+
+export const AuthContext = createContext(null)
 
 // Leer el token de la cookie al cargar la página
 const leerCookie = () => {
@@ -9,9 +10,14 @@ const leerCookie = () => {
 }
 
 // Decodificar payload del JWT sin verificar firma
+// URL-safe base64 → standard base64; decodeURIComponent para soportar caracteres UTF-8 (ñ, tildes, etc.)
 const decodificarToken = (token) => {
   try {
-    return JSON.parse(atob(token.split('.')[1]))
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const json = decodeURIComponent(
+      atob(base64).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    )
+    return JSON.parse(json)
   } catch {
     return null
   }
@@ -25,15 +31,16 @@ export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(usuarioInicial)
 
   // Limpiar solo el estado local; usada por el interceptor cuando el refresh falla
-  const limpiarSesion = () => {
+  // useCallback con [] garantiza referencia estable para registrarla una sola vez en el interceptor
+  const limpiarSesion = useCallback(() => {
     document.cookie = 'token=; path=/; max-age=0'
     setUsuario(null)
-  }
+  }, [])
 
   // Registrar el callback en el interceptor de axios al montar el proveedor
   useEffect(() => {
     setSesionExpiradaCallback(limpiarSesion)
-  }, [])
+  }, [limpiarSesion])
 
   const login = (datos) => {
     document.cookie = `token=${datos.token}; path=/; max-age=${2 * 60 * 60}; SameSite=Strict`

@@ -8,8 +8,8 @@ import LoginPage from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import EntrenadorDashboard from './pages/EntrenadorDashboard'
 import ClienteDashboard from './pages/ClienteDashboard'
-
-const RUTAS_ROL = { admin: '/admin', entrenador: '/entrenador', cliente: '/cliente' }
+import PaginaRestablecerPassword from './pages/PaginaRestablecerPassword'
+import { RUTAS_ROL } from './constants'
 
 // Redirigir al dashboard del rol si hay sesión, si no al login
 function RedireccionInicio() {
@@ -33,6 +33,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/restablecer/:token" element={<PaginaRestablecerPassword />} />
 
           <Route element={<RutaProtegida />}>
             <Route element={<RutaRol rol="admin" />}>

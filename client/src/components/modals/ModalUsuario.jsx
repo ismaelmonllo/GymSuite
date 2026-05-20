@@ -152,7 +152,6 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
       })
     } catch (err) {
       console.error('Error al guardar usuario:', err.response?.data ?? err.message)
-      console.log('[debug] status:', err.response?.status, ' data:', err.response?.data)
       const data = err.response?.data
       // 409: el backend ha encontrado usuarios de baja con el mismo DNI o correo; abrir modal para ofrecer reactivar
       if (err.response?.status === 409 && Array.isArray(data?.inactivos) && data.inactivos.length > 0) {

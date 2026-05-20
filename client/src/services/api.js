@@ -7,6 +7,7 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true, // Enviar cookies (refresh_token) en peticiones cross-origin
+  headers: { 'X-Requested-With': 'XMLHttpRequest' }, // Defensa CSRF: los formularios HTML no pueden añadir este header
 })
 
 // Adjuntar el token JWT de la cookie en cada petición autenticada
@@ -31,7 +32,10 @@ api.interceptors.response.use(
       original._retry = true
       try {
         // Llamar a refresh con axios nativo para no pasar por este interceptor
-        const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, { withCredentials: true })
+        const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, {
+          withCredentials: true,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
 
         // Guardar el nuevo token en cookie y reintentar la petición original
         document.cookie = `token=${data.token}; path=/; max-age=${2 * 60 * 60}; SameSite=Strict`

@@ -3,6 +3,10 @@ import Header from '../components/layout/Header'
 import ListaUsuarios from '../components/dashboard/ListaUsuarios'
 import FiltrosUsuarios from '../components/dashboard/FiltrosUsuarios'
 import { useAuth } from '../hooks/useAuth'
+import { useUsuarios } from '../hooks/useUsuarios'
+import { useCuotas } from '../hooks/useCuotas'
+import { usePagosGenerar } from '../hooks/usePagosGenerar'
+import { useConfirmarPago } from '../hooks/useConfirmarPago'
 import api from '../services/api'
 import { color, s } from '../styles'
 import BtnGenerarPagos from '../components/dashboard/BtnGenerarPagos'
@@ -14,15 +18,20 @@ import ModalMedicionesHistorial from '../components/modals/ModalMedicionesHistor
 import ModalConfirmarPago from '../components/modals/ModalConfirmarPago'
 
 
-const mesActual = new Date().toISOString().slice(0, 7)
-
 function EntrenadorDashboard() {
   const { usuario, logout } = useAuth()
 
-  const [clientes, setClientes]           = useState([])
-  const [cargandoTabla, setCargandoTabla] = useState(true)
   const [ultimoPago, setUltimoPago]       = useState({})
-  const [cuotas, setCuotas]               = useState([])
+  const [errorOperacion, setErrorOperacion] = useState(null)
+
+  const { clientes, setClientes, cargando: cargandoTabla, recargar } = useUsuarios('entrenador')
+  const cuotas = useCuotas()
+
+  const recargarUltimoPago = () =>
+    api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
+
+  const generarPagos = usePagosGenerar(recargarUltimoPago)
+  const confirmarPago = useConfirmarPago(setUltimoPago, setErrorOperacion)
 
   const [busqueda, setBusqueda]             = useState('')
   const [campoBusqueda, setCampoBusqueda]   = useState('nombre')
@@ -30,38 +39,20 @@ function EntrenadorDashboard() {
   const [filtroPago, setFiltroPago]         = useState('todos')
   const [ordenar, setOrdenar]               = useState('fecha_desc')
 
-  const [confirmarGenerarPagos, setConfirmarGenerarPagos] = useState(false)
-  const [resultadoGenerarPagos, setResultadoGenerarPagos] = useState(null)
-  const [generandoPagos, setGenerandoPagos]               = useState(false)
-
   const [modalUsuario, setModalUsuario]                 = useState(null)
   const [confirmacionBajaAlta, setConfirmacionBajaAlta] = useState(null)
   const [procesando, setProcesando]                     = useState(null)
-  const [errorOperacion, setErrorOperacion]             = useState(null)
-  const [confirmandoPago, setConfirmandoPago]           = useState(null)
-  const [confirmacionPago, setConfirmacionPago]         = useState(null)
   const [modalPagos, setModalPagos]                     = useState(null)
   const [modalCambioCuota, setModalCambioCuota]         = useState(null)
   const [modalMediciones, setModalMediciones]           = useState(null)
 
+  // Cargar último pago de cada cliente al montar
   useEffect(() => {
-    api.get('/api/cuotas').then(res => setCuotas(res.data.cuotas ?? [])).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    Promise.all([
-      api.get('/api/clientes'),
-      api.get('/api/stats/ultimo-pago').then(res => res.data).catch(() => ({})),
-    ])
-      .then(([resClientes, mapaUltimoPago]) => {
-        setClientes(resClientes.data.clientes ?? [])
-        setUltimoPago(mapaUltimoPago)
-      })
-      .catch(err => console.error('Error cargando clientes:', err))
-      .finally(() => setCargandoTabla(false))
+    recargarUltimoPago()
   }, [])
 
   const listaFiltrada = useMemo(() => {
+    const mesActual = new Date().toISOString().slice(0, 7)
     if (!Array.isArray(clientes)) return []
 
     return clientes
@@ -113,26 +104,6 @@ function EntrenadorDashboard() {
     }
   }
 
-  // Llamar al endpoint de generación y mostrar el resultado en un modal
-  const ejecutarGenerarPagos = async () => {
-    setConfirmarGenerarPagos(false)
-    setGenerandoPagos(true)
-    try {
-      const res = await api.post('/api/pagos/generar')
-      const { generados, clientes_procesados } = res.data
-      setResultadoGenerarPagos(
-        generados === 0
-          ? { exito: true, mensaje: 'Todos los clientes ya tienen pagos generados para este mes.' }
-          : { exito: true, mensaje: `Pagos generados correctamente.\n${clientes_procesados} clientes procesados, ${generados} pagos creados.` }
-      )
-      api.get('/api/stats/ultimo-pago').then(resStats => setUltimoPago(resStats.data)).catch(() => {})
-    } catch (err) {
-      setResultadoGenerarPagos({ exito: false, mensaje: err.response?.data?.mensaje ?? 'Error al generar los pagos.' })
-    } finally {
-      setGenerandoPagos(false)
-    }
-  }
-
   // Cargar perfil propio del entrenador y abrir su modal
   const abrirPerfilPropio = async () => {
     try {
@@ -144,39 +115,15 @@ function EntrenadorDashboard() {
     }
   }
 
-  // Abrir confirmación de pago con los datos del último pago pendiente
-  const confirmarPago = (u) => {
-    const pago = ultimoPago[u._id]
-    if (!pago?.pendiente) return
-    setConfirmacionPago({ usuario: u, pago })
-  }
-
-  // Marcar el grupo de pagos como cobrado y refrescar el mapa de últimos pagos
-  // Refetch en lugar de patch local para que la fecha y demás campos queden actualizados
-  const ejecutarConfirmacionPago = async () => {
-    const { usuario: clienteConfirmado, pago } = confirmacionPago
-    setConfirmacionPago(null)
-    setConfirmandoPago(clienteConfirmado._id)
-    try {
-      await api.post('/api/pagos/registrar', { grupo_pago: pago.grupo_pago })
-      const resStats = await api.get('/api/stats/ultimo-pago')
-      setUltimoPago(resStats.data)
-    } catch {
-      setErrorOperacion(`No se pudo confirmar el pago de ${clienteConfirmado.nombre} ${clienteConfirmado.apellidos}.`)
-    } finally {
-      setConfirmandoPago(null)
-    }
-  }
-
   return (
     <div className={`min-h-screen ${color.bgPagina} flex flex-col`}>
       <Header usuario={usuario} onLogout={logout} onAvatarClick={abrirPerfilPropio}>
-        <BtnGenerarPagos onClick={() => setConfirmarGenerarPagos(true)} cargando={generandoPagos} />
+        <BtnGenerarPagos onClick={generarPagos.abrir} cargando={generarPagos.cargando} />
       </Header>
 
       <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full mx-auto flex flex-col gap-6 sm:gap-8">
 
-        <BtnGenerarPagos onClick={() => setConfirmarGenerarPagos(true)} cargando={generandoPagos} className="sm:hidden" />
+        <BtnGenerarPagos onClick={generarPagos.abrir} cargando={generarPagos.cargando} className="sm:hidden" />
 
         <FiltrosUsuarios
           busqueda={busqueda}           onBusquedaChange={setBusqueda}
@@ -201,36 +148,36 @@ function EntrenadorDashboard() {
           cargando={cargandoTabla}
           esClientes
           ultimoPago={ultimoPago}
-          mesActual={mesActual}
+          mesActual={new Date().toISOString().slice(0, 7)}
           procesando={procesando}
-          confirmandoPago={confirmandoPago}
+          confirmandoPago={confirmarPago.confirmandoPago}
           mostrarMediciones
           onVerPerfil={usr => setModalUsuario({ usuario: usr })}
           onVerPagos={setModalPagos}
           onCambiarCuota={setModalCambioCuota}
           onVerMediciones={setModalMediciones}
           onBajaAlta={setConfirmacionBajaAlta}
-          onConfirmarPago={confirmarPago}
+          onConfirmarPago={usr => confirmarPago.abrirConfirmacion(usr, ultimoPago)}
         />
 
       </main>
 
-      {confirmarGenerarPagos && (
+      {generarPagos.confirmar && (
         <ModalConfirmacion
           mensaje="¿Generar pagos del mes actual para todos los clientes que no los tengan?"
           textoConfirmar="Generar"
-          onConfirmar={ejecutarGenerarPagos}
-          onCancelar={() => setConfirmarGenerarPagos(false)}
+          onConfirmar={generarPagos.ejecutar}
+          onCancelar={() => generarPagos.cerrarResultado()}
         />
       )}
 
-      {resultadoGenerarPagos && (
+      {generarPagos.resultado && (
         <ModalConfirmacion
-          mensaje={resultadoGenerarPagos.mensaje}
+          mensaje={generarPagos.resultado.mensaje}
           textoConfirmar="Cerrar"
           soloConfirmar
-          onConfirmar={() => setResultadoGenerarPagos(null)}
-          onCancelar={() => setResultadoGenerarPagos(null)}
+          onConfirmar={generarPagos.cerrarResultado}
+          onCancelar={generarPagos.cerrarResultado}
         />
       )}
 
@@ -252,9 +199,8 @@ function EntrenadorDashboard() {
                 ))
               }
             } else {
-              api.get('/api/clientes')
-                .then(res => setClientes(res.data.clientes ?? []))
-                .catch(err => console.error('Error recargando clientes tras alta:', err))
+              // Alta nueva: recargar para obtener el documento completo con _id y fecha_alta
+              recargar()
             }
           }}
         />
@@ -286,9 +232,7 @@ function EntrenadorDashboard() {
           cuotas={cuotas}
           bloqueadoEdicion={!modalPagos.activo}
           onClose={() => setModalPagos(null)}
-          onPagoConfirmado={() => {
-            api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
-          }}
+          onPagoConfirmado={recargarUltimoPago}
           onCuotaCambiada={(clienteActualizado) => {
             setClientes(prev => prev.map(cliente =>
               cliente._id === clienteActualizado._id ? clienteActualizado : cliente
@@ -319,13 +263,13 @@ function EntrenadorDashboard() {
         />
       )}
 
-      {confirmacionPago && (
+      {confirmarPago.confirmacionPago && (
         <ModalConfirmarPago
-          cliente={confirmacionPago.usuario}
-          pago={confirmacionPago.pago}
-          cuota={cuotas.find(tipoCuota => tipoCuota.nombre === confirmacionPago.pago.tipo_cuota)}
-          onConfirmar={ejecutarConfirmacionPago}
-          onCancelar={() => setConfirmacionPago(null)}
+          cliente={confirmarPago.confirmacionPago.usuario}
+          pago={confirmarPago.confirmacionPago.pago}
+          cuota={cuotas.find(tipoCuota => tipoCuota.nombre === confirmarPago.confirmacionPago.pago.tipo_cuota)}
+          onConfirmar={confirmarPago.ejecutar}
+          onCancelar={() => confirmarPago.setConfirmacionPago(null)}
         />
       )}
     </div>

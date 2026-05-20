@@ -39,10 +39,10 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
       : `/api/mediciones/cliente/${cliente._id}`
     api.get(endpoint)
       .then(res => setMediciones(res.data))
-      .catch(err => {
-        if (err.response?.status !== 404) console.error('Error cargando mediciones:', err)
-      })
+      .catch(err => console.error('Error cargando mediciones:', err))
       .finally(() => setCargando(false))
+  // medicionesIniciales es valor inicial de prop, no cambia durante la vida del modal
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente._id, soloLectura])
 
   // Eliminar medición y actualizar la lista localmente

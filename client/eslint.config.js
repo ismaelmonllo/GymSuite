@@ -23,7 +23,12 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Ignorar variables y args PascalCase (componentes JSX como Icono inyectado por prop)
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'react-hooks/exhaustive-deps': 'warn',
+      // Permite que archivos de contexto exporten tanto createContext como AuthProvider
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
 ])
