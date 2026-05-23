@@ -1,7 +1,7 @@
 // Rutas de entrenadores: solo el admin puede gestionarlos
 import express from 'express';
 import { verificarToken, verificarRol, verificarRolBody, forzarRolQuery, verificarPropioOAdmin } from '../middleware/auth.js';
-import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja, darDeAlta } from '../controllers/usuarioController.js';
+import { listarEmpleados, verEmpleado, crearEmpleado, editarEmpleado, darDeBaja, darDeAlta, eliminarUsuario } from '../controllers/usuarioController.js';
 
 const router = express.Router();
 
