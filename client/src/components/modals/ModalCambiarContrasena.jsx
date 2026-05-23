@@ -5,8 +5,12 @@ import api from '../../services/api'
 import { color, s } from '../../styles'
 import { useAuth } from '../../hooks/useAuth'
 
-// Modal para que el usuario autenticado cambie su propia contraseña
-// forzado=true se usa tras un alta o reseteo: no se puede cerrar y no muestra botón Cancelar
+/**
+ * Modal para que el usuario autenticado cambie su propia contraseña.
+ * `forzado=true` se usa tras un alta o reseteo: no se puede cerrar y no muestra botón Cancelar.
+ * @param {{onClose: () => void, forzado?: boolean}} props
+ * @returns {JSX.Element}
+ */
 function ModalCambiarContrasena({ onClose, forzado = false }) {
   const { actualizarToken } = useAuth()
 
@@ -17,6 +21,10 @@ function ModalCambiarContrasena({ onClose, forzado = false }) {
   const [guardando, setGuardando]               = useState(false)
   const [exito, setExito]                       = useState(false)
 
+  /**
+   * Validar los campos del formulario antes de enviarlo.
+   * @returns {string|null} Mensaje de error o null si todo es válido
+   */
   const validar = () => {
     if (!contrasenaActual)           return 'Introduce la contraseña actual.'
     if (!nuevaContrasena)            return 'Introduce la nueva contraseña.'
@@ -25,6 +33,10 @@ function ModalCambiarContrasena({ onClose, forzado = false }) {
     return null
   }
 
+  /**
+   * Enviar la nueva contraseña al backend y refrescar la sesión con el nuevo token.
+   * @returns {Promise<void>}
+   */
   const guardar = async () => {
     const err = validar()
     if (err) { setError(err); return }

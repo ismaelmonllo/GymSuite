@@ -77,9 +77,14 @@ const LABELS = {
   cresta_iliaca: 'Cresta ilíaca (mm)',
 }
 
-// Modal solo desktop con gráfica de evolución de mediciones de un cliente
-// titulo se muestra tal cual en la cabecera (ej. "Evolución — Nombre Apellido")
-// mediciones llega ya cargado desde el padre — sin fetch interno
+/**
+ * Modal solo desktop con gráfica de evolución (Recharts) de mediciones de un cliente.
+ * `titulo` se muestra tal cual en la cabecera (ej. "Evolución — Nombre Apellido").
+ * `mediciones` llega ya cargado desde el padre — sin fetch interno.
+ * Permite filtrar por rango de fechas y por métricas (con grupos colapsables).
+ * @param {{titulo: string, mediciones: object[], onClose: () => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalGraficaMediciones({ titulo, mediciones, onClose }) {
 
   // Ordenar ascendente por fecha para que la gráfica vaya de izquierda a derecha
@@ -131,6 +136,10 @@ function ModalGraficaMediciones({ titulo, mediciones, onClose }) {
 
   // Grupos abiertos — todos cerrados por defecto
   const [gruposAbiertos, setGruposAbiertos] = useState(() => new Set())
+  /**
+   * Alternar el estado abierto/cerrado de un grupo de métricas.
+   * @param {string} id Identificador del grupo
+   */
   const toggleGrupo = (id) => {
     setGruposAbiertos(prev => {
       const siguiente = new Set(prev)
@@ -140,7 +149,10 @@ function ModalGraficaMediciones({ titulo, mediciones, onClose }) {
     })
   }
 
-  // Alternar selección garantizando que siempre quede al menos 1 métrica activa
+  /**
+   * Alternar selección de una métrica garantizando que siempre quede al menos 1 activa.
+   * @param {string} clave Clave de la métrica
+   */
   const alternar = (clave) => {
     setActivas(prev => {
       if (prev.includes(clave)) {
@@ -151,7 +163,10 @@ function ModalGraficaMediciones({ titulo, mediciones, onClose }) {
     })
   }
 
-  // Si el usuario adelanta "Desde" más allá de "Hasta", arrastrar "Hasta" para mantener coherencia
+  /**
+   * Cambiar la fecha "Desde"; si supera "Hasta", arrastra "Hasta" para mantener coherencia.
+   * @param {string} nuevaFecha Fecha ISO YYYY-MM-DD
+   */
   const cambiarDesde = (nuevaFecha) => {
     setDesde(nuevaFecha)
     if (hasta && new Date(nuevaFecha) > new Date(hasta)) setHasta(nuevaFecha)

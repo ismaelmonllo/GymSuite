@@ -8,13 +8,21 @@ import api from '../../services/api'
 import { color } from '../../styles'
 import { formatearImporte } from '../../utils'
 
-// Icono según si el pago está confirmado o pendiente
+/**
+ * Devolver el icono correspondiente al estado del pago.
+ * @param {boolean} pendiente
+ * @returns {JSX.Element} Icono Clock (rojo) si pendiente, CheckCircle (verde) si confirmado
+ */
 const iconoPago = (pendiente) =>
   pendiente
     ? <Clock size={16} className="text-red-400 shrink-0" />
     : <CheckCircle size={16} className="text-green-400 shrink-0" />
 
-// Agrupar array de pagos por grupo_pago preservando el orden de llegada
+/**
+ * Agrupar array de pagos por `grupo_pago` preservando el orden de llegada.
+ * @param {object[]} pagos Lista de pagos del backend
+ * @returns {object[][]} Array de grupos (cada grupo es un array de pagos)
+ */
 const agruparPorGrupo = (pagos) => {
   const map = new Map()
   for (const pago of pagos) {
@@ -25,9 +33,13 @@ const agruparPorGrupo = (pagos) => {
   return [...map.values()]
 }
 
-// Historial de pagos de un cliente: cuota actual, botones de acción e historial agrupado
-// soloLectura: modo cliente — usa /api/pagos/mis-pagos y oculta botones de empleado
-// bloqueadoEdicion: empleado viendo a un cliente en baja — usa endpoint de empleado pero oculta acciones de edición
+/**
+ * Historial de pagos de un cliente: cuota actual, botones de acción e historial agrupado.
+ * - `soloLectura`: modo cliente — usa /api/pagos/mis-pagos y oculta botones de empleado.
+ * - `bloqueadoEdicion`: empleado viendo a un cliente en baja — usa endpoint de empleado pero oculta acciones de edición.
+ * @param {{cliente: object, cuotas?: object[], onClose: () => void, onPagoConfirmado?: () => void, onCuotaCambiada?: (cliente: object) => void, soloLectura?: boolean, bloqueadoEdicion?: boolean}} props
+ * @returns {JSX.Element}
+ */
 function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCambiada, soloLectura = false, bloqueadoEdicion = false }) {
   const [pagos, setPagos]             = useState([])
   const [cargando, setCargando]       = useState(true)
@@ -63,7 +75,10 @@ function ModalPagos({ cliente, cuotas = [], onClose, onPagoConfirmado, onCuotaCa
   // Pagos agrupados por grupo_pago para renderizar juntos los meses de una misma cuota
   const grupos = agruparPorGrupo(pagos)
 
-  // Confirmar todos los pagos del grupo pendiente más reciente y refrescar la lista
+  /**
+   * Confirmar todos los pagos del grupo pendiente más reciente y refrescar la lista.
+   * @returns {Promise<void>}
+   */
   const registrarPago = async () => {
     if (!primerPendiente) return
     setRegistrando(true)

@@ -18,6 +18,11 @@ import ModalMedicionesHistorial from '../components/modals/ModalMedicionesHistor
 import ModalConfirmarPago from '../components/modals/ModalConfirmarPago'
 
 
+/**
+ * Dashboard del rol entrenador: gestión de clientes (perfil, pagos, cuotas, mediciones)
+ * con filtros, búsqueda y ordenación. Sin estadísticas globales (eso es de admin).
+ * @returns {JSX.Element}
+ */
 function EntrenadorDashboard() {
   const { usuario, logout } = useAuth()
 
@@ -27,6 +32,10 @@ function EntrenadorDashboard() {
   const { clientes, setClientes, cargando: cargandoTabla, recargar } = useUsuarios('entrenador')
   const cuotas = useCuotas()
 
+  /**
+   * Recargar el mapa de último pago por cliente desde el backend.
+   * @returns {Promise<void>}
+   */
   const recargarUltimoPago = () =>
     api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
 
@@ -85,7 +94,11 @@ function EntrenadorDashboard() {
       })
   }, [clientes, busqueda, campoBusqueda, filtroActivo, filtroPago, ordenar, ultimoPago])
 
-  // Dar de baja o de alta un cliente
+  /**
+   * Dar de baja o de alta un cliente y actualizar el estado local.
+   * @param {object} u Cliente a alternar
+   * @returns {Promise<void>}
+   */
   const toggleActivo = async (u) => {
     setProcesando(u._id)
     try {
@@ -104,7 +117,10 @@ function EntrenadorDashboard() {
     }
   }
 
-  // Cargar perfil propio del entrenador y abrir su modal
+  /**
+   * Cargar el perfil propio del entrenador y abrir su modal.
+   * @returns {Promise<void>}
+   */
   const abrirPerfilPropio = async () => {
     try {
       const res = await api.get(`/api/entrenadores/${usuario.id}`)

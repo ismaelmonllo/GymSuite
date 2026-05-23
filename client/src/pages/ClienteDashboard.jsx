@@ -12,7 +12,11 @@ import api from '../services/api'
 import { color } from '../styles'
 import { formatearFecha } from '../utils'
 
-// Formatear fecha_alta como "Cliente desde Oct. 2020"
+/**
+ * Formatear fecha_alta como "Cliente desde Oct. 2020".
+ * @param {string|Date|null} fecha
+ * @returns {string}
+ */
 const formatearDesde = (fecha) => {
   if (!fecha) return ''
   const d = new Date(fecha)
@@ -20,7 +24,12 @@ const formatearDesde = (fecha) => {
   return `Cliente desde ${fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1)}`
 }
 
-// Calcular diferencia entre dos valores numéricos; devuelve null si no hay datos suficientes
+/**
+ * Calcular la diferencia entre dos valores numéricos para mostrar tendencia (▲/▼).
+ * @param {number|null|undefined} ultimo
+ * @param {number|null|undefined} anterior
+ * @returns {{signo: string, valor: number, arriba: boolean}|null} Objeto delta o null si no hay datos suficientes / no cambia
+ */
 const calcularDelta = (ultimo, anterior) => {
   if (anterior == null || ultimo == null) return null
   const diff = +(ultimo - anterior).toFixed(1)
@@ -30,6 +39,11 @@ const calcularDelta = (ultimo, anterior) => {
 
 const mesActual = new Date().toISOString().slice(0, 7)
 
+/**
+ * Dashboard del rol cliente: tarjetas de perfil, pagos y mediciones con vista resumen.
+ * Solo lectura — cualquier modificación se gestiona por entrenador/admin.
+ * @returns {JSX.Element}
+ */
 function ClienteDashboard() {
   const { usuario, logout } = useAuth()
 
@@ -43,6 +57,10 @@ function ClienteDashboard() {
   const [modalUltimaMedicion, setModalUltimaMedicion] = useState(false)
 
   useEffect(() => {
+    /**
+     * Cargar perfil, pagos y mediciones en paralelo desde la API.
+     * @returns {Promise<void>}
+     */
     const cargarDatos = async () => {
       try {
         // Cargar perfil, pagos y mediciones en paralelo
@@ -77,8 +95,12 @@ function ClienteDashboard() {
   const mesesPagados = pagos.filter(pago => !pago.pendiente).map(pago => pago.mes)
   const mesVencimiento = mesesPagados.length ? mesesPagados.sort().at(-1) : null
 
-  // Convertir "YYYY-MM" en el último día de ese mes (ej. "2026-05" → 31/5/2026)
-  // Usar día 0 del mes siguiente para obtener el último día del mes indicado
+  /**
+   * Convertir "YYYY-MM" en el último día de ese mes (ej. "2026-05" → 31/5/2026).
+   * Usa día 0 del mes siguiente para obtener el último día del mes indicado.
+   * @param {string|null} mes Cadena en formato YYYY-MM
+   * @returns {Date|null}
+   */
   const calcularUltimoDia = (mes) => {
     if (!mes) return null
     const [anio, m] = mes.split('-').map(Number)

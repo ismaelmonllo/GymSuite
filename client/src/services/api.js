@@ -10,7 +10,11 @@ const api = axios.create({
   headers: { 'X-Requested-With': 'XMLHttpRequest' }, // Defensa CSRF: los formularios HTML no pueden añadir este header
 })
 
-// Adjuntar el token JWT de la cookie en cada petición autenticada
+/**
+ * Interceptor de request: adjuntar el token JWT de la cookie en cada petición autenticada.
+ * @param {import('axios').InternalAxiosRequestConfig} config
+ * @returns {import('axios').InternalAxiosRequestConfig}
+ */
 api.interceptors.request.use((config) => {
   const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
   if (match) config.headers.Authorization = `Bearer ${match[1]}`
@@ -19,9 +23,18 @@ api.interceptors.request.use((config) => {
 
 // Función inyectada desde AuthContext para limpiar el estado de sesión si el refresh falla
 let onSesionExpirada = null
+
+/**
+ * Registrar un callback que se ejecutará cuando la sesión expire (refresh fallido).
+ * @param {() => void} fn Callback que limpia el estado de sesión en AuthContext
+ */
 export const setSesionExpiradaCallback = (fn) => { onSesionExpirada = fn }
 
-// Renovar el token de acceso automáticamente cuando el servidor responde 401
+/**
+ * Interceptor de response: renovar el token de acceso automáticamente cuando el servidor responde 401.
+ * Reintenta la petición original una sola vez tras refrescar el token.
+ * @param {import('axios').AxiosResponse} response
+ */
 api.interceptors.response.use(
   (response) => response,
   async (error) => {

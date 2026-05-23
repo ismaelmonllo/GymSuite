@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { s, color } from '../../styles'
 
-// Modal para introducir el código OTP enviado por email
+/**
+ * Modal para introducir el código OTP de 6 dígitos enviado por email durante el login 2FA.
+ * @param {{correo: string, onVerificar: (codigo: string) => void, onCerrar: () => void, error?: string, cargando: boolean}} props
+ * @returns {JSX.Element}
+ */
 function Modal2FA({ correo, onVerificar, onCerrar, error, cargando }) {
   const [codigo, setCodigo] = useState('')
 
+  /**
+   * Manejar el submit del formulario evitando recarga y delegando la verificación al padre.
+   * @param {React.FormEvent} e
+   */
   const handleSubmit = (e) => {
     e.preventDefault()
     onVerificar(codigo)

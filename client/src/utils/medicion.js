@@ -37,10 +37,17 @@ export const CAMPOS_NUMERICOS = new Set([
   ...PLIEGUES.map(campo => campo.id),
 ])
 
-// Fecha de hoy en formato YYYY-MM-DD para el input date
+/**
+ * Obtener la fecha de hoy en formato YYYY-MM-DD para el input date.
+ * @returns {string} Fecha de hoy en ISO recortada a 10 caracteres
+ */
 export const hoy = () => new Date().toISOString().slice(0, 10)
 
-// Preparar el body para la API: convertir numéricos a Number y excluir strings vacíos
+/**
+ * Preparar el body para la API: convertir numéricos a Number y excluir strings vacíos.
+ * @param {Record<string, unknown>} datos Formulario completo en bruto
+ * @returns {Record<string, unknown>} Objeto listo para enviar al backend
+ */
 export const prepararBody = (datos) =>
   Object.fromEntries(
     Object.entries(datos)
@@ -48,7 +55,10 @@ export const prepararBody = (datos) =>
       .map(([k, v]) => [k, CAMPOS_NUMERICOS.has(k) ? Number(v) : v])
   )
 
-// Construir formulario vacío para nueva medición con fecha de hoy
+/**
+ * Construir formulario vacío para nueva medición con fecha de hoy.
+ * @returns {Record<string, string>} Estado inicial del formulario
+ */
 export const formVacio = () => ({
   fecha: hoy(), peso: '', altura: '', porcentaje_grasa: '',
   cuello: '', hombros: '', pecho_ins: '', pecho_exp: '',
@@ -57,7 +67,11 @@ export const formVacio = () => ({
   observaciones: '',
 })
 
-// Rellenar formulario con los datos de una medición existente
+/**
+ * Rellenar formulario con los datos de una medición existente (todos los campos a string).
+ * @param {Record<string, unknown>} medicion Documento de medición devuelto por la API
+ * @returns {Record<string, string>} Estado del formulario listo para editar
+ */
 export const formDesdeMedicion = (medicion) => ({
   fecha:            medicion.fecha?.slice(0, 10) ?? hoy(),
   peso:             String(medicion.peso            ?? ''),

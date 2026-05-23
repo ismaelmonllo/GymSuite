@@ -1,8 +1,15 @@
 import { color, s } from '../../styles'
 
-// Card clickable para el dashboard del cliente. Muestra una cabecera con icono + título y contenido libre debajo
+/**
+ * Card clickable para el dashboard del cliente: cabecera con icono + título y contenido libre debajo.
+ * @param {{icono: React.ElementType, titulo: string, onClick?: () => void, className?: string, children: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function CardDashboard({ icono: Icono, titulo, onClick, className = '', children }) {
-  // Permitir activar la card también con teclado (Enter o espacio) para accesibilidad
+  /**
+   * Permitir activar la card también con teclado (Enter o espacio) para accesibilidad.
+   * @param {React.KeyboardEvent} e
+   */
   const manejarTecla = e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()

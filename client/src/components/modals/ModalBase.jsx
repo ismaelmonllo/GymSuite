@@ -1,9 +1,13 @@
 import { X } from 'lucide-react'
 import { color, s } from '../../styles'
 
-// Carcasa reutilizable para todos los modales: overlay + card centrada + cabecera con título y cierre
-// ancho acepta cualquier clase max-w-* de Tailwind; por defecto max-w-xl
-// cerrable=false oculta la X y desactiva el cierre por overlay (modales obligatorios, ej. cambio forzoso de contraseña)
+/**
+ * Carcasa reutilizable para todos los modales: overlay + card centrada + cabecera con título y cierre.
+ * `ancho` acepta cualquier clase max-w-* de Tailwind (por defecto max-w-xl).
+ * `cerrable=false` oculta la X y desactiva el cierre por overlay (modales obligatorios, ej. cambio forzoso de contraseña).
+ * @param {{titulo: string, onClose: () => void, ancho?: string, cerrable?: boolean, children: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function ModalBase({ titulo, onClose, ancho = 'max-w-xl', cerrable = true, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-5">

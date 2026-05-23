@@ -21,7 +21,10 @@ import ModalPagos from '../components/modals/ModalPagos'
 import ModalConfirmarPago from '../components/modals/ModalConfirmarPago'
 
 
-// Lanzar los 7 endpoints de stats en paralelo; si uno falla, el resto sigue
+/**
+ * Lanzar los 7 endpoints de estadísticas en paralelo; si uno falla el resto sigue.
+ * @returns {Promise<{mesPagado: string|null, anualTotal: string|null, mesPagados: number|null, mesPendientes: number|null, clientes: number|null, trabajadores: number|null, altasMes: number|null, altasAnio: number|null}>}
+ */
 const fetchStats = async () => {
   const resultados = await Promise.allSettled([
     api.get('/api/stats/mes'),
@@ -52,6 +55,11 @@ const fetchStats = async () => {
 }
 
 
+/**
+ * Dashboard del rol admin: estadísticas del negocio, gestión de cuotas y CRUD de usuarios.
+ * Combina clientes y empleados con filtros, búsqueda, generación y confirmación de pagos.
+ * @returns {JSX.Element}
+ */
 function AdminDashboard() {
   const { usuario, logout } = useAuth()
 
@@ -67,6 +75,10 @@ function AdminDashboard() {
   const { clientes, empleados, setClientes, setEmpleados, cargando: cargandoTabla, recargar } = useUsuarios('admin')
   const cuotas = useCuotas()
 
+  /**
+   * Recargar el mapa de último pago por cliente desde el backend.
+   * @returns {Promise<void>}
+   */
   const recargarUltimoPago = () =>
     api.get('/api/stats/ultimo-pago').then(res => setUltimoPago(res.data)).catch(() => {})
 
@@ -85,7 +97,9 @@ function AdminDashboard() {
   const [modalCuotas, setModalCuotas]                   = useState(false)
   const [modalUsuario, setModalUsuario]                 = useState(null)    // null = cerrado | { usuario, rolEditable }
   const [confirmacionBajaAlta, setConfirmacionBajaAlta] = useState(null)    // usuario pendiente de baja/alta
+  const [confirmacionEliminar, setConfirmacionEliminar] = useState(null)    // usuario pendiente de eliminar
   const [procesando, setProcesando]                     = useState(null)    // _id del usuario en proceso de baja/alta
+  const [procesandoEliminar, setProcesandoEliminar]     = useState(null)    // _id del usuario en proceso de eliminar
   const [modalPagos, setModalPagos]                     = useState(null)    // cliente cuyos pagos se van a ver
   const [modalCambioCuota, setModalCambioCuota]         = useState(null)    // cliente cuya cuota se va a cambiar
 
@@ -144,7 +158,11 @@ function AdminDashboard() {
 
   const esClientes = vista === 'clientes'
 
-  // Dar de baja (PATCH /baja) o reactivar (PATCH /alta) un usuario; actualiza el estado local sin recargar la lista completa
+  /**
+   * Dar de baja (PATCH /baja) o reactivar (PATCH /alta) un usuario; actualiza el estado local sin recargar la lista completa.
+   * @param {object} u Usuario a alternar
+   * @returns {Promise<void>}
+   */
   const toggleActivo = async (u) => {
     const tipo = esClientes ? 'clientes' : (u.rol === 'admin' ? 'administradores' : 'entrenadores')
     setProcesando(u._id)
@@ -165,7 +183,30 @@ function AdminDashboard() {
     }
   }
 
-  // Cargar el perfil completo del usuario autenticado y abrir su modal
+  /**
+   * Eliminar usuario físicamente (DELETE). Solo aplicable a usuarios de baja.
+   * Actualiza la lista local quitando el documento sin recargar todo.
+   * @param {object} usr Usuario a eliminar
+   * @returns {Promise<void>}
+   */
+  const eliminarUsuario = async (usr) => {
+    const tipo = esClientes ? 'clientes' : (usr.rol === 'admin' ? 'administradores' : 'entrenadores')
+    setProcesandoEliminar(usr._id)
+    try {
+      await api.delete(`/api/${tipo}/${usr._id}`)
+      const quitar = lista => lista.filter(item => item._id !== usr._id)
+      esClientes ? setClientes(quitar) : setEmpleados(quitar)
+    } catch {
+      setErrorOperacion(`No se pudo eliminar a ${usr.nombre} ${usr.apellidos}.`)
+    } finally {
+      setProcesandoEliminar(null)
+    }
+  }
+
+  /**
+   * Cargar el perfil completo del usuario autenticado y abrir su modal.
+   * @returns {Promise<void>}
+   */
   const abrirPerfilPropio = async () => {
     try {
       const endpoint = usuario.rol === 'admin' ? 'administradores' : 'entrenadores'
@@ -274,11 +315,13 @@ function AdminDashboard() {
           ultimoPago={ultimoPago}
           mesActual={new Date().toISOString().slice(0, 7)}
           procesando={procesando}
+          procesandoEliminar={procesandoEliminar}
           confirmandoPago={confirmarPago.confirmandoPago}
           onVerPerfil={usr => setModalUsuario({ usuario: usr })}
           onVerPagos={setModalPagos}
           onCambiarCuota={setModalCambioCuota}
           onBajaAlta={setConfirmacionBajaAlta}
+          onEliminar={setConfirmacionEliminar}
           onConfirmarPago={usr => confirmarPago.abrirConfirmacion(usr, ultimoPago)}
         />
 
@@ -351,6 +394,16 @@ function AdminDashboard() {
           peligro={confirmacionBajaAlta.activo}
           onConfirmar={() => { toggleActivo(confirmacionBajaAlta); setConfirmacionBajaAlta(null) }}
           onCancelar={() => setConfirmacionBajaAlta(null)}
+        />
+      )}
+
+      {confirmacionEliminar && (
+        <ModalConfirmacion
+          mensaje={`¿Eliminar definitivamente a ${confirmacionEliminar.nombre} ${confirmacionEliminar.apellidos}? Esta acción no se puede deshacer.`}
+          textoConfirmar="Eliminar"
+          peligro
+          onConfirmar={() => { eliminarUsuario(confirmacionEliminar); setConfirmacionEliminar(null) }}
+          onCancelar={() => setConfirmacionEliminar(null)}
         />
       )}
 

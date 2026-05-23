@@ -5,7 +5,12 @@ import api from '../../services/api'
 import { color, s } from '../../styles'
 import { formatearImporte } from '../../utils'
 
-// Mostrar las cuotas disponibles y permitir seleccionar una nueva para el cliente
+/**
+ * Mostrar las cuotas disponibles y permitir seleccionar una nueva para el cliente.
+ * Preselecciona la cuota actual del cliente; al guardar muestra modal de resultado.
+ * @param {{cliente: object, cuotas: object[], onClose: () => void, onGuardar?: (clienteActualizado: object) => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalCambioCuota({ cliente, cuotas, onClose, onGuardar }) {
   // Preseleccionar la cuota actual del cliente si existe
   const [seleccionada, setSeleccionada] = useState(
@@ -14,7 +19,10 @@ function ModalCambioCuota({ cliente, cuotas, onClose, onGuardar }) {
   const [guardando, setGuardando]   = useState(false)
   const [resultado, setResultado]   = useState(null) // { exito: bool, mensaje: string, datos: obj }
 
-  // Enviar la nueva cuota al servidor y mostrar el resultado en un modal superpuesto
+  /**
+   * Enviar la nueva cuota al servidor y mostrar el resultado en un modal superpuesto.
+   * @returns {Promise<void>}
+   */
   const guardar = async () => {
     if (!seleccionada) return
     setGuardando(true)

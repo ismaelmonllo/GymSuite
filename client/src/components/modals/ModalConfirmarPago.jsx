@@ -1,8 +1,12 @@
 import { color, s } from '../../styles'
 import { formatearImporte } from '../../utils'
 
-// Modal de confirmación de cobro de un pago: muestra cliente, cuota, mes y dos botones
-// cuota es opcional (cuando no se conoce el importe en el contexto del que llama)
+/**
+ * Modal de confirmación de cobro de un pago: muestra cliente, cuota, mes y dos botones.
+ * `cuota` es opcional (cuando no se conoce el importe en el contexto del que llama).
+ * @param {{cliente: object, pago: object, cuota?: object, onConfirmar: () => void, onCancelar: () => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalConfirmarPago({ cliente, pago, cuota, onConfirmar, onCancelar }) {
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center">

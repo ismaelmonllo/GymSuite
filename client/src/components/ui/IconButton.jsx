@@ -1,7 +1,11 @@
 import { Loader2 } from 'lucide-react'
 import { color } from '../../styles'
 
-// Botón de icono con hover de color configurable; muestra spinner mientras procesando=true
+/**
+ * Botón de icono con hover de color configurable; muestra spinner mientras procesando=true.
+ * @param {{icono: React.ElementType, titulo: string, onClick: () => void, disabled?: boolean, procesando?: boolean, colorHover?: string, size?: number}} props
+ * @returns {JSX.Element}
+ */
 function IconButton({ icono: Icono, titulo, onClick, disabled = false, procesando = false, colorHover = 'hover:text-orange-400', size = 18 }) {
   return (
     <button

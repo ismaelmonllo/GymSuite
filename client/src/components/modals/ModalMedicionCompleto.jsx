@@ -14,9 +14,13 @@ import {
   prepararBody, formVacio, formDesdeMedicion,
 } from '../../utils/medicion'
 
-// Modal de detalle completo de una medición: ver, editar o crear nueva
-// Si se pasa `mediciones` y hay más de una, en modo ver aparecen flechas para navegar cronológicamente
-// bloqueadoEdicion: empleado viendo un cliente en baja — oculta botones de editar/guardar/nueva
+/**
+ * Modal de detalle completo de una medición: ver, editar o crear nueva.
+ * Si se pasa `mediciones` y hay más de una, en modo ver aparecen flechas para navegar cronológicamente.
+ * `bloqueadoEdicion`: empleado viendo un cliente en baja — oculta botones de editar/guardar/nueva.
+ * @param {{cliente: object, medicion?: object, mediciones?: object[], modoInicial?: 'ver'|'editar'|'nueva', bloqueadoEdicion?: boolean, onClose: () => void, onGuardado?: (medicion: object) => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'ver', bloqueadoEdicion = false, onClose, onGuardado }) {
   const { usuario } = useAuth()
   const esEmpleado = (usuario.rol === 'admin' || usuario.rol === 'entrenador') && !bloqueadoEdicion
@@ -59,7 +63,11 @@ function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'v
   const previo    = esNueva && medicion ? formDesdeMedicion(medicion) : null
   const imcPrevio = previo ? calcularIMC(previo.peso, previo.altura) : null
 
-  // Actualizar un campo del formulario; si es un pliegue, recalcular % grasa en el mismo setState
+  /**
+   * Actualizar un campo del formulario; si es un pliegue recalcular % grasa en el mismo setState.
+   * @param {string} campo Nombre del campo del formulario
+   * @param {string} valor Valor nuevo
+   */
   const actualizarCampo = (campo, valor) => {
     setForm(prev => {
       const nuevo = { ...prev, [campo]: valor }
@@ -72,14 +80,19 @@ function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'v
     if (errores[campo]) setErrores(prev => ({ ...prev, [campo]: null }))
   }
 
-  // Resetear a modo nueva medición con formulario vacío
+  /**
+   * Resetear a modo nueva medición con formulario vacío.
+   */
   const iniciarNueva = () => {
     setModo('nueva')
     setForm(formVacio())
     setErrores({})
   }
 
-  // Comprobar que todos los campos obligatorios tienen valores válidos
+  /**
+   * Comprobar que todos los campos obligatorios tienen valores numéricos válidos.
+   * @returns {boolean} true si el formulario es válido
+   */
   const validar = () => {
     const nuevosErrores = {}
     for (const campo of CAMPOS_OBLIGATORIOS) {
@@ -98,7 +111,10 @@ function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'v
     return Object.keys(nuevosErrores).length === 0
   }
 
-  // Enviar el formulario a la API: POST para nueva, PUT para edición
+  /**
+   * Enviar el formulario a la API: POST para nueva, PUT para edición.
+   * @returns {Promise<void>}
+   */
   const guardar = async () => {
     setConfirmandoGuardar(false)
     setGuardando(true)
@@ -119,14 +135,18 @@ function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'v
     }
   }
 
-  // Cancelar edición: revertir el formulario a los datos originales y volver al modo ver
+  /**
+   * Cancelar edición: revertir el formulario a los datos originales y volver al modo ver.
+   */
   const cancelarEdicion = () => {
     if (medicionActual) setForm(formDesdeMedicion(medicionActual))
     setErrores({})
     setModo('ver')
   }
 
-  // Validar y decidir si pedir confirmación (editar) o guardar directamente (nueva)
+  /**
+   * Validar y decidir si pedir confirmación (editar) o guardar directamente (nueva).
+   */
   const intentarGuardar = () => {
     if (!validar()) return
     if (esEditar) {
@@ -141,7 +161,12 @@ function ModalMedicionCompleto({ cliente, medicion, mediciones, modoInicial = 'v
     ? `Nueva medición — ${cliente.nombre} ${cliente.apellidos}`
     : `Medición`
 
-  // Input numérico reutilizable para perímetros y pliegues
+  /**
+   * Renderizar input numérico reutilizable para perímetros y pliegues.
+   * @param {string} id Nombre del campo
+   * @param {string} placeholder Placeholder cuando no hay valor previo
+   * @returns {JSX.Element}
+   */
   const inputNumerico = (id, placeholder) => (
     <input
       type="number" step="0.1" min="0"

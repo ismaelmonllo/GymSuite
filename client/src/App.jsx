@@ -11,22 +11,32 @@ import ClienteDashboard from './pages/ClienteDashboard'
 import PaginaRestablecerPassword from './pages/PaginaRestablecerPassword'
 import { RUTAS_ROL } from './constants'
 
-// Redirigir al dashboard del rol si hay sesión, si no al login
+/**
+ * Redirigir al dashboard del rol si hay sesión, si no al login.
+ * @returns {JSX.Element}
+ */
 function RedireccionInicio() {
   const { usuario } = useAuth()
   if (!usuario) return <Navigate to="/login" replace />
   return <Navigate to={RUTAS_ROL[usuario.rol] ?? '/login'} replace />
 }
 
-// Bloquear cualquier vista mostrando un modal forzado de cambio de contraseña
-// Se activa si el JWT trae forzar_cambio_password=true (alta o reseteo); el modal no se puede cerrar
-// hasta que el cambio se confirma y el backend devuelva un token sin esa flag
+/**
+ * Bloquear cualquier vista mostrando un modal forzado de cambio de contraseña.
+ * Se activa si el JWT trae `forzar_cambio_password=true` (alta o reseteo); el modal no se puede cerrar
+ * hasta que el cambio se confirma y el backend devuelva un token sin esa flag.
+ * @returns {JSX.Element|null}
+ */
 function ModalForzadoSiAplica() {
   const { usuario } = useAuth()
   if (!usuario?.forzar_cambio_password) return null
   return <ModalCambiarContrasena forzado />
 }
 
+/**
+ * Componente raíz: provee el contexto de auth, configura el router y monta el modal forzado de cambio de contraseña.
+ * @returns {JSX.Element}
+ */
 function App() {
   return (
     <AuthProvider>

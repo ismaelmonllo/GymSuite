@@ -1,6 +1,11 @@
 import { color, s } from '../../styles'
 
-// Modal genérico de confirmación: muestra un mensaje y dos botones (confirmar / cancelar)
+/**
+ * Modal genérico de confirmación: muestra un mensaje y botones (confirmar / cancelar).
+ * Con `peligro=true` el botón principal va en rojo; con `soloConfirmar=true` se oculta el de cancelar.
+ * @param {{mensaje: React.ReactNode, textoConfirmar?: string, textoCancelar?: string, onConfirmar: () => void, onCancelar: () => void, peligro?: boolean, soloConfirmar?: boolean}} props
+ * @returns {JSX.Element}
+ */
 function ModalConfirmacion({ mensaje, textoConfirmar = 'Confirmar', textoCancelar = 'Cancelar', onConfirmar, onCancelar, peligro = false, soloConfirmar = false }) {
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center">

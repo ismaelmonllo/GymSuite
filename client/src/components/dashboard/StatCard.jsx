@@ -1,6 +1,11 @@
 import { color, s } from '../../styles'
 
-// Tarjeta de estadística con una métrica principal y una secundaria opcional
+/**
+ * Tarjeta de estadística con una métrica principal y una secundaria opcional.
+ * Mientras `cargando` es true muestra esqueletos animados en lugar de los valores.
+ * @param {{icono?: React.ElementType, titulo: string, principal: {label: string, valor: any}, secundario?: {label: string, valor: any}, cargando: boolean, valorCompacto?: boolean}} props
+ * @returns {JSX.Element}
+ */
 function StatCard({ icono: Icono, titulo, principal, secundario, cargando, valorCompacto = false }) {
   return (
     <div className={`${s.card} rounded-xl p-5 flex flex-col gap-3`}>

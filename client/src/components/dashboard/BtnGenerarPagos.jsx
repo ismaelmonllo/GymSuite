@@ -1,6 +1,11 @@
 import { color } from '../../styles'
 
-// Botón de generar pagos reutilizable; acepta className para añadir sm:hidden en móvil
+/**
+ * Botón reutilizable para disparar la generación de pagos del mes.
+ * Acepta className para variar visibilidad por breakpoint (p. ej. `sm:hidden`).
+ * @param {{onClick: () => void, cargando: boolean, className?: string}} props
+ * @returns {JSX.Element}
+ */
 function BtnGenerarPagos({ onClick, cargando, className = '' }) {
   return (
     <button

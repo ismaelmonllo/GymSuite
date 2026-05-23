@@ -8,14 +8,24 @@ import Modal2FA from '../components/auth/Modal2FA'
 import { color } from '../styles'
 import { RUTAS_ROL } from '../constants'
 
-// Comprobar que el rol del token coincide con la pestaña seleccionada en el formulario.
-// Evita que un trabajador entre por la pestaña Cliente y viceversa, aunque las credenciales sean correctas.
+/**
+ * Comprobar que el rol del token coincide con la pestaña seleccionada en el formulario.
+ * Evita que un trabajador entre por la pestaña Cliente y viceversa.
+ * @param {'admin'|'entrenador'|'cliente'} rol
+ * @param {'cliente'|'trabajador'} tab
+ * @returns {boolean}
+ */
 const rolEsValido = (rol, tab) => {
   if (tab === 'cliente') return rol === 'cliente'
   if (tab === 'trabajador') return rol === 'admin' || rol === 'entrenador'
   return false
 }
 
+/**
+ * Página de login con pestañas Cliente/Trabajador y soporte 2FA por email.
+ * Tras un login válido redirige al dashboard correspondiente al rol.
+ * @returns {JSX.Element}
+ */
 function LoginPage() {
   // Pestaña activa: 'cliente' o 'trabajador'
   const [tab, setTab] = useState('cliente')
@@ -33,15 +43,21 @@ function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  // Limpiar el error al cambiar de pestaña para no mostrar mensajes obsoletos
+  /**
+   * Cambiar la pestaña activa y limpiar el error para no mostrar mensajes obsoletos.
+   * @param {'cliente'|'trabajador'} nuevaTab
+   */
   const handleCambiarTab = (nuevaTab) => {
     setTab(nuevaTab)
     setError('')
   }
 
-  // Paso final del login: decodificar el JWT, validar que el rol corresponde a la pestaña
-  // seleccionada y, si todo es correcto, guardar la sesión y redirigir al dashboard.
-  // Se ejecuta tanto en login directo como tras verificar el código 2FA.
+  /**
+   * Paso final del login: decodificar el JWT, validar el rol contra la pestaña,
+   * guardar la sesión y redirigir al dashboard. Se ejecuta tanto en login directo
+   * como tras verificar el código 2FA.
+   * @param {string} token JWT firmado por el backend
+   */
   const completarLogin = (token) => {
     // El payload del JWT contiene id, rol, nombre y apellidos
     const payload = JSON.parse(atob(token.split('.')[1]))
@@ -63,9 +79,12 @@ function LoginPage() {
     navigate(RUTAS_ROL[payload.rol])
   }
 
-  // Primer paso del login: enviar correo y contraseña al backend.
-  // Si el servidor requiere 2FA, abre el modal para introducir el código OTP.
-  // Si no, completa el login directamente con el token recibido.
+  /**
+   * Primer paso del login: enviar correo y contraseña al backend.
+   * Si el servidor requiere 2FA abre el modal del OTP; si no completa el login con el token.
+   * @param {React.FormEvent} e
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -88,8 +107,12 @@ function LoginPage() {
     }
   }
 
-  // Segundo paso del login con 2FA: enviar el código OTP introducido por el usuario.
-  // Si el código es correcto, el servidor devuelve el token y se completa el login.
+  /**
+   * Segundo paso del login con 2FA: enviar el código OTP introducido por el usuario.
+   * Si el código es correcto el servidor devuelve el token y se completa el login.
+   * @param {string} codigo Código OTP de 6 dígitos
+   * @returns {Promise<void>}
+   */
   const handleVerificar2FA = async (codigo) => {
     setError2FA('')
     setCargando2FA(true)
@@ -104,7 +127,9 @@ function LoginPage() {
     }
   }
 
-  // Cerrar el modal 2FA sin completar el login; el usuario puede volver a intentarlo
+  /**
+   * Cerrar el modal 2FA sin completar el login; el usuario puede volver a intentarlo.
+   */
   const handleCerrarModal = () => {
     setCorreoOTP(null)
     setError2FA('')

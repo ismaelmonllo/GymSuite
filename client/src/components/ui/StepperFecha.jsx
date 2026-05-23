@@ -1,9 +1,12 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { color, s } from '../../styles'
 
-// Campo de fecha de solo lectura con flechas integradas a los lados para navegar entre fechas
-// Las flechas se desactivan vía puedeAnterior y puedeSiguiente
-// La fecha se muestra formateada como DD/MM/YYYY centrada en el contenedor
+/**
+ * Campo de fecha de solo lectura con flechas integradas para navegar entre fechas.
+ * La fecha se muestra formateada como DD/MM/YYYY; las flechas se desactivan vía puedeAnterior/puedeSiguiente.
+ * @param {{fecha: string, puedeAnterior: boolean, puedeSiguiente: boolean, onAnterior: () => void, onSiguiente: () => void}} props
+ * @returns {JSX.Element}
+ */
 function StepperFecha({ fecha, puedeAnterior, puedeSiguiente, onAnterior, onSiguiente }) {
   // Formatear la fecha YYYY-MM-DD a DD/MM/YYYY interpretándola en hora local (no UTC)
   const fechaFormateada = fecha

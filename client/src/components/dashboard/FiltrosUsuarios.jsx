@@ -2,8 +2,12 @@ import { useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import { color, s } from '../../styles'
 
-// Buscador + filtros de la lista de usuarios. Los botones de toggle de vista y añadir
-// van fuera de este componente (son propios de cada dashboard).
+/**
+ * Buscador + filtros de la lista de usuarios (estado, pago, ordenación) con vista desktop fija y móvil colapsable.
+ * Los botones de toggle de vista y añadir van fuera de este componente (son propios de cada dashboard).
+ * @param {{busqueda: string, onBusquedaChange: (v: string) => void, campoBusqueda: string, onCampoBusquedaChange: (v: string) => void, filtroActivo: string, onFiltroActivoChange: (v: string) => void, filtroPago?: string, onFiltroPagoChange?: (v: string) => void, mostrarFiltroPago?: boolean, ordenar: string, onOrdenarChange: (v: string) => void, children?: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function FiltrosUsuarios({
   busqueda,           onBusquedaChange,
   campoBusqueda,      onCampoBusquedaChange,

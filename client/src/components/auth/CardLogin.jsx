@@ -1,6 +1,10 @@
 import { s, color } from '../../styles'
 
-// Card de login con pestañas, formulario y lógica de autenticación
+/**
+ * Card de login con pestañas (cliente/trabajador), campos de credenciales y submit.
+ * @param {{tab: 'cliente'|'trabajador', onCambiarTab: (tab: string) => void, correo: string, onCorreo: (v: string) => void, contrasena: string, onContrasena: (v: string) => void, error?: string, cargando: boolean, onSubmit: (e: React.FormEvent) => void}} props
+ * @returns {JSX.Element}
+ */
 function CardLogin({ tab, onCambiarTab, correo, onCorreo, contrasena, onContrasena, error, cargando, onSubmit }) {
   return (
     <div>

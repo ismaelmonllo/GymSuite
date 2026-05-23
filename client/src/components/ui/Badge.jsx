@@ -11,6 +11,11 @@ const variantes = {
   entrenador:      'bg-orange-950 text-orange-400',
 }
 
+/**
+ * Etiqueta pequeña con color según variante (estado de cliente, rol, pago, nivel, etc).
+ * @param {{variante: string, children: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function Badge({ variante, children }) {
   return (
     <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${variantes[variante] ?? ''}`}>

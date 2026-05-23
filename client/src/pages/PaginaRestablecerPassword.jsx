@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import { color } from '../styles'
 
-// Página pública accesible desde el link de restablecimiento enviado por email
-// Extrae el token de la URL y lo envía junto con la nueva contraseña al backend
+/**
+ * Página pública accesible desde el link de restablecimiento enviado por email.
+ * Extrae el token de la URL y lo envía junto con la nueva contraseña al backend.
+ * @returns {JSX.Element}
+ */
 function PaginaRestablecerPassword() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -15,6 +18,11 @@ function PaginaRestablecerPassword() {
   const [exito, setExito] = useState(false)
   const [cargando, setCargando] = useState(false)
 
+  /**
+   * Validar las contraseñas en local y enviarlas al backend con el token de la URL.
+   * @param {React.FormEvent} e
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')

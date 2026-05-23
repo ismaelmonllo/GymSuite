@@ -1,7 +1,10 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
-// Redirigir a /login si no hay sesión activa
+/**
+ * Guardia de rutas: redirigir a /login si no hay sesión activa.
+ * @returns {JSX.Element}
+ */
 function RutaProtegida() {
   const { usuario } = useAuth()
 

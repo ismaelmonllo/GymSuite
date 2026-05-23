@@ -8,7 +8,11 @@ const requisitos = [
   { texto: 'Al menos un símbolo',     cumple: contrasena => /[^a-zA-Z0-9]/.test(contrasena) },
 ]
 
-// Indicadores de requisitos de contraseña en tiempo real; solo se muestra si hay valor
+/**
+ * Mostrar indicadores de requisitos de contraseña en tiempo real; solo se muestra si hay valor.
+ * @param {{valor: string}} props Contraseña actual del input
+ * @returns {JSX.Element|null}
+ */
 function ValidacionContrasena({ valor }) {
   if (!valor) return null
 

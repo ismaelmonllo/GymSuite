@@ -9,17 +9,25 @@ import { useAuth } from '../../hooks/useAuth'
 import { color, s } from '../../styles'
 import { formatearImporte } from '../../utils'
 
-// Determinar el endpoint de API según el rol
+/**
+ * Mapear rol a segmento de URL en la API.
+ * @param {'admin'|'entrenador'|'cliente'|string} rol
+ * @returns {string} Segmento de ruta (administradores, entrenadores o clientes)
+ */
 const endpointPorRol = (rol) => {
   if (rol === 'admin')      return 'administradores'
   if (rol === 'entrenador') return 'entrenadores'
   return 'clientes'
 }
 
-// Construir el estado inicial del formulario a partir del usuario (o vacío si es crear).
-// fecha_nacimiento se recorta a YYYY-MM-DD porque el backend devuelve ISO 8601 completo
-// y el input type="date" solo acepta ese formato corto.
-// rol: si no hay usuario, el valor por defecto depende de si el rol es editable (trabajador) o no (cliente)
+/**
+ * Construir el estado inicial del formulario a partir del usuario (o vacío si es crear).
+ * `fecha_nacimiento` se recorta a YYYY-MM-DD porque el backend devuelve ISO 8601 completo
+ * y el input type="date" solo acepta ese formato corto.
+ * @param {object} [usuario] Usuario existente o undefined si se está creando
+ * @param {boolean} [rolEditable] Si es true, por defecto se crea como "entrenador"
+ * @returns {Record<string, string>}
+ */
 const formInicial = (usuario, rolEditable) => ({
   nombre:           usuario?.nombre           ?? '',
   apellidos:        usuario?.apellidos        ?? '',
@@ -39,7 +47,11 @@ const erroresIniciales = {
   DNI: '', telefono: '', fecha_nacimiento: '', sexo: '',
 }
 
-// Validar el formulario; devuelve objeto de errores (campos vacíos = sin error)
+/**
+ * Validar el formulario.
+ * @param {Record<string, string>} form Datos del formulario
+ * @returns {Record<string, string>} Objeto con un mensaje por campo (vacío = sin error)
+ */
 const validarForm = (form) => {
   const e = { ...erroresIniciales }
 
@@ -76,13 +88,21 @@ const validarForm = (form) => {
   return e
 }
 
-// Comprobar si hay algún error en el objeto de errores
+/**
+ * Comprobar si hay algún error en el objeto de errores.
+ * @param {Record<string, string>} errores
+ * @returns {boolean}
+ */
 const hayErrores = (errores) => Object.values(errores).some(valor => valor !== '')
 
-// Modal de creación, visualización y edición de usuarios.
-// - esCrear: no se pasa usuario → formulario en blanco, modo edición activo desde el inicio
-// - soloLectura: muestra los datos sin botón de editar (usado cuando el cliente ve su propio perfil)
-// - rolEditable: permite cambiar el rol al crear un empleado (solo admin)
+/**
+ * Modal de creación, visualización y edición de usuarios.
+ * - Si no se pasa `usuario`: modo crear (formulario en blanco, edición activa).
+ * - `soloLectura`: muestra los datos sin botón de editar (usado cuando el cliente ve su propio perfil).
+ * - `rolEditable`: permite cambiar el rol al crear un empleado (solo admin).
+ * @param {{usuario?: object, onClose: () => void, onGuardar?: (datos: object) => void, rolEditable?: boolean, soloLectura?: boolean}} props
+ * @returns {JSX.Element}
+ */
 function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLectura = false }) {
   const { usuario: usuarioAuth } = useAuth()
   const esCrear = !usuario
@@ -109,13 +129,19 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }, [esCrear])
 
-  // Actualizar campo y limpiar su error al escribir
+  /**
+   * Actualizar un campo del formulario y limpiar su error al escribir.
+   * @param {string} campo Nombre del campo
+   * @param {string} valor Valor nuevo
+   */
   const actualizarCampo = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }))
     if (errores[campo]) setErrores(prev => ({ ...prev, [campo]: '' }))
   }
 
-  // Cancelar edición: si es crear cierra el modal, si es editar restaura los valores originales
+  /**
+   * Cancelar la edición: si está creando cierra el modal, si está editando restaura los valores originales.
+   */
   const cancelar = () => {
     if (esCrear) {
       onClose()
@@ -126,9 +152,13 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
-  // Guardar: valida en local primero; solo llama a la API si todo es correcto.
-  // Filtra campos vacíos para no sobreescribir datos opcionales con string vacío.
-  // Excluye contrasena del PUT — se gestiona en su propio modal.
+  /**
+   * Guardar el usuario. Valida en local primero; solo llama a la API si todo es correcto.
+   * Filtra campos vacíos para no sobrescribir datos opcionales con string vacío.
+   * Excluye `contrasena` del PUT — se gestiona en su propio modal.
+   * Si el backend responde 409 con usuarios inactivos coincidentes, abre ModalReactivar.
+   * @returns {Promise<void>}
+   */
   const guardar = async () => {
     const e = validarForm(form)
     if (hayErrores(e)) {
@@ -167,7 +197,10 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
-  // Resetear la contraseña del usuario: el backend genera una temporal y la manda por email
+  /**
+   * Resetear la contraseña del usuario: el backend genera una temporal y la manda por email.
+   * @returns {Promise<void>}
+   */
   const handleResetearPassword = async () => {
     setResetando(true)
     try {
@@ -181,7 +214,11 @@ function ModalUsuario({ usuario, onClose, onGuardar, rolEditable = false, soloLe
     }
   }
 
-  // Clases del input según si está habilitado o no
+  /**
+   * Construir las clases del input según si está habilitado o no.
+   * @param {boolean} deshabilitado
+   * @returns {string}
+   */
   const inputClass = (deshabilitado) =>
     `${s.input} w-full ${deshabilitado ? 'opacity-50 cursor-not-allowed' : ''}`
 

@@ -1,12 +1,33 @@
-import { User, Ban, RotateCcw, CheckCircle, CalendarDays, Receipt, Ruler } from 'lucide-react'
+import { User, Ban, RotateCcw, CheckCircle, CalendarDays, Receipt, Ruler, Trash2 } from 'lucide-react'
 import Badge from '../ui/Badge'
 import IconButton from '../ui/IconButton'
 import { color, s } from '../../styles'
 import { formatearFecha } from '../../utils'
 
-// Lista de usuarios: cards en móvil + tabla en desktop
-// Si en el futuro hay más botones variables por rol, considerar prop `accionesExtra` (JSX)
-// que el padre inyecte directamente en renderAcciones, evitando acumular props booleanas.
+/**
+ * Lista de usuarios responsive: cards en móvil + tabla en desktop.
+ * Maneja tanto clientes (con pago, nivel, mediciones) como empleados (admin/entrenador).
+ * Si en el futuro hay más botones variables por rol, considerar prop `accionesExtra` (JSX)
+ * que el padre inyecte directamente en renderAcciones, evitando acumular props booleanas.
+ * @param {object} props
+ * @param {object[]} props.lista Usuarios a mostrar ya filtrados y ordenados
+ * @param {boolean} props.cargando Si la lista está cargando muestra placeholder
+ * @param {boolean} props.esClientes True si la lista es de clientes (muestra columnas extra)
+ * @param {Record<string, object>} [props.ultimoPago] Mapa { clienteId: pago }
+ * @param {number} props.mesActual Mes actual (YYYYMM) para comparar con el del pago
+ * @param {string|null} props.procesando _id del usuario en proceso de baja/alta
+ * @param {string|null} props.procesandoEliminar _id del usuario en proceso de eliminación
+ * @param {string|null} props.confirmandoPago _id del cliente cuyo pago se está confirmando
+ * @param {boolean} [props.mostrarMediciones]
+ * @param {(usuario: object) => void} props.onVerPerfil
+ * @param {(usuario: object) => void} props.onVerPagos
+ * @param {(usuario: object) => void} props.onCambiarCuota
+ * @param {(usuario: object) => void} props.onVerMediciones
+ * @param {(usuario: object) => void} props.onBajaAlta
+ * @param {(usuario: object) => void} [props.onEliminar]
+ * @param {(usuario: object) => void} props.onConfirmarPago
+ * @returns {JSX.Element}
+ */
 function ListaUsuarios({
   lista,
   cargando,
@@ -14,6 +35,7 @@ function ListaUsuarios({
   ultimoPago = {},
   mesActual,
   procesando,
+  procesandoEliminar,
   confirmandoPago,
   mostrarMediciones = false,
   onVerPerfil,
@@ -21,11 +43,16 @@ function ListaUsuarios({
   onCambiarCuota,
   onVerMediciones,
   onBajaAlta,
+  onEliminar,
   onConfirmarPago,
 }) {
 
-  // Badges + botón confirmar pago para la columna/sección de último pago
-  // Si el usuario está en baja se oculta el botón de confirmar pago (solo lectura)
+  /**
+   * Renderizar el badge de estado del último pago + botón confirmar (solo si pendiente y activo).
+   * Si el usuario está en baja se oculta el botón de confirmar pago (solo lectura).
+   * @param {object} usuario
+   * @returns {JSX.Element|null}
+   */
   const renderPago = (usuario) => {
     if (!esClientes) return null
     const pago = ultimoPago[usuario._id]
@@ -51,9 +78,13 @@ function ListaUsuarios({
     return <Badge variante="no-generado">No generado</Badge>
   }
 
-  // Acciones comunes de cada fila/card
-  // Si el usuario está en baja se ocultan las acciones que modifican datos (cambiar cuota)
-  // Se mantienen las de solo lectura (ver perfil, pagos, mediciones) y la de dar de alta
+  /**
+   * Renderizar los botones de acción comunes a cada fila/card.
+   * Si el usuario está en baja se ocultan las acciones que modifican datos (cambiar cuota).
+   * Se mantienen las de solo lectura (ver perfil, pagos, mediciones) y la de dar de alta.
+   * @param {object} usuario
+   * @returns {JSX.Element}
+   */
   const renderAcciones = (usuario) => (
     <>
       <IconButton icono={User} titulo="Ver perfil" onClick={() => onVerPerfil(usuario)} />
@@ -67,6 +98,15 @@ function ListaUsuarios({
         procesando={procesando === usuario._id}
         colorHover={usuario.activo ? 'hover:text-red-400' : 'hover:text-green-400'}
       />
+      {!usuario.activo && onEliminar && (
+        <IconButton
+          icono={Trash2}
+          titulo="Eliminar usuario"
+          onClick={() => onEliminar(usuario)}
+          procesando={procesandoEliminar === usuario._id}
+          colorHover="hover:text-red-400"
+        />
+      )}
     </>
   )
 

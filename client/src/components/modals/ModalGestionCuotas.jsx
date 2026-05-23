@@ -7,7 +7,12 @@ import api from '../../services/api'
 import { color, s } from '../../styles'
 import { centimosAEuros, eurosACentimos } from '../../utils'
 
-// Cargar cuotas existentes, permitir edición inline, añadir nuevas y borrar
+/**
+ * Modal de gestión de tipos de cuota: cargar, crear, editar inline y borrar.
+ * Las modificaciones son locales hasta pulsar "Guardar cambios", momento en el que se sincroniza con la API.
+ * @param {{onClose: () => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalGestionCuotas({ onClose }) {
   const [cuotas, setCuotas]                         = useState([])
   const [cuotasOriginales, setCuotasOriginales]     = useState([])
@@ -35,7 +40,10 @@ function ModalGestionCuotas({ onClose }) {
       .finally(() => setCargando(false))
   }, [])
 
-  // Comprobar si hay cambios pendientes sin guardar respecto al estado original
+  /**
+   * Comprobar si hay cambios pendientes sin guardar respecto al estado original cargado.
+   * @returns {boolean}
+   */
   const hayCambiosPendientes = () => {
     const hayEliminadas = cuotasOriginales.some(
       orig => !cuotas.find(cuota => cuota._id === orig._id)
@@ -48,7 +56,10 @@ function ModalGestionCuotas({ onClose }) {
     })
   }
 
-  // Interceptar el cierre: si hay cambios pendientes mostrar confirmación, si no cerrar directamente
+  /**
+   * Interceptar el cierre del modal: si hay cambios pendientes mostrar confirmación,
+   * si no cerrar directamente. Ignora el cierre mientras se está guardando.
+   */
   const handleClose = () => {
     if (guardando) return
     if (hayCambiosPendientes()) {
@@ -58,17 +69,27 @@ function ModalGestionCuotas({ onClose }) {
     }
   }
 
-  // Actualizar un campo de una cuota en el estado local
+  /**
+   * Actualizar un campo de una cuota en el estado local.
+   * @param {number} index Índice de la cuota en el array
+   * @param {string} campo Nombre del campo (nombre, meses, importe)
+   * @param {string} valor Valor nuevo
+   */
   const actualizarCampo = (index, campo, valor) => {
     setCuotas(prev => prev.map((cuota, i) => i === index ? { ...cuota, [campo]: valor } : cuota))
   }
 
-  // Quitar cuota del estado local — el DELETE real se ejecuta al guardar
+  /**
+   * Quitar cuota del estado local. El DELETE real se ejecuta al guardar.
+   * @param {number} index Índice de la cuota a quitar
+   */
   const borrarCuota = (index) => {
     setCuotas(prev => prev.filter((_cuota, i) => i !== index))
   }
 
-  // Añadir card vacía al estado local y bajar el scroll para que sea visible
+  /**
+   * Añadir card vacía al estado local y bajar el scroll para que sea visible.
+   */
   const nuevaCuota = () => {
     setCuotas(prev => [...prev, { nombre: '', meses: '', importe: '' }])
     setTimeout(() => {
@@ -76,7 +97,11 @@ function ModalGestionCuotas({ onClose }) {
     }, 0)
   }
 
-  // Persistir todos los cambios en la API y mostrar el resultado operación por operación
+  /**
+   * Persistir todos los cambios en la API (crear/editar/eliminar) en paralelo y mostrar
+   * el resultado operación por operación.
+   * @returns {Promise<void>}
+   */
   const guardar = async () => {
     // Validar que todas las cuotas tengan los tres campos rellenos antes de llamar a la API
     const invalidas = cuotas.filter(cuota => !cuota.nombre.trim() || !cuota.meses || !cuota.importe)

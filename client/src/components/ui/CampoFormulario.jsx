@@ -1,6 +1,10 @@
 import { color, s } from '../../styles'
 
-// Envuelve label + campo + mensaje de error en un bloque de formulario uniforme
+/**
+ * Envolver label + campo + mensaje de error en un bloque de formulario uniforme.
+ * @param {{label: string, error?: string, className?: string, children: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function CampoFormulario({ label, error, className = '', children }) {
   return (
     <div className={`${s.fieldGroup} ${className}`}>

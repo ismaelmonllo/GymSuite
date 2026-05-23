@@ -1,8 +1,12 @@
 import { CheckCircle, XCircle } from 'lucide-react'
 import { color, s } from '../../styles'
 
-// Modal superpuesto para mostrar el resultado de una operación.
-// Acepta mensaje simple (exito + mensaje) o contenido personalizado (children).
+/**
+ * Modal superpuesto para mostrar el resultado de una operación.
+ * Acepta mensaje simple (`exito` + `mensaje`) o contenido personalizado vía children.
+ * @param {{exito: boolean, mensaje?: string, onCerrar: () => void, children?: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function ModalResultado({ exito, mensaje, onCerrar, children }) {
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center">

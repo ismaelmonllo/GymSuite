@@ -9,13 +9,21 @@ import api from '../../services/api'
 import { color } from '../../styles'
 import { useAuth } from '../../hooks/useAuth'
 
-// Formatear fecha ISO a DD/MM/YYYY interpretando la fecha en hora local (no UTC)
+/**
+ * Formatear fecha ISO a DD/MM/YYYY interpretando la fecha en hora local (no UTC).
+ * @param {string|Date} fecha
+ * @returns {string}
+ */
 const formatearFecha = (fecha) => new Date(String(fecha).slice(0, 10) + 'T00:00:00').toLocaleDateString('es-ES')
 
-// Historial de mediciones de un cliente: tabla en desktop, cards en móvil
-// soloLectura: modo cliente — usa /api/mediciones y oculta botones de empleado
-// bloqueadoEdicion: empleado viendo a un cliente en baja — endpoint de empleado pero sin acciones de edición
-// medicionesIniciales: si se pasan, se usan directamente sin hacer fetch (evita doble carga)
+/**
+ * Historial de mediciones de un cliente: tabla en desktop, cards en móvil.
+ * - `soloLectura`: modo cliente — usa /api/mediciones y oculta botones de empleado.
+ * - `bloqueadoEdicion`: empleado viendo a un cliente en baja — endpoint de empleado pero sin acciones de edición.
+ * - `medicionesIniciales`: si se pasan, se usan directamente sin hacer fetch (evita doble carga).
+ * @param {{cliente: object, onClose: () => void, soloLectura?: boolean, bloqueadoEdicion?: boolean, medicionesIniciales?: object[]|null}} props
+ * @returns {JSX.Element}
+ */
 function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqueadoEdicion = false, medicionesIniciales = null }) {
   const { usuario } = useAuth()
   const esEmpleado = (usuario.rol === 'admin' || usuario.rol === 'entrenador') && !bloqueadoEdicion
@@ -45,7 +53,10 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente._id, soloLectura])
 
-  // Eliminar medición y actualizar la lista localmente
+  /**
+   * Eliminar la medición pendiente de confirmación y actualizar la lista localmente.
+   * @returns {Promise<void>}
+   */
   const borrarMedicion = async () => {
     if (!confirmandoBorrar) return
     setBorrando(true)
@@ -61,19 +72,27 @@ function ModalMedicionesHistorial({ cliente, onClose, soloLectura = false, bloqu
     }
   }
 
-  // Abrir ModalMedicionCompleto en modo ver
+  /**
+   * Abrir el modal de detalle en modo ver.
+   * @param {object} medicion
+   */
   const abrirVer = (medicion) => {
     setMedicionSeleccionada(medicion)
     setModoModal('ver')
   }
 
-  // Abrir ModalMedicionCompleto en modo editar
+  /**
+   * Abrir el modal de detalle en modo editar.
+   * @param {object} medicion
+   */
   const abrirEditar = (medicion) => {
     setMedicionSeleccionada(medicion)
     setModoModal('editar')
   }
 
-  // Abrir ModalMedicionCompleto en modo nueva; pasa la última medición para usarla como placeholder
+  /**
+   * Abrir el modal en modo nueva medición; pasa la última como placeholder de los inputs.
+   */
   const abrirNueva = () => {
     setMedicionSeleccionada(mediciones[0] ?? null)
     setModoModal('nueva')

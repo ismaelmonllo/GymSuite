@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 
-// Cargar clientes y empleados según el rol del usuario autenticado
-// Admin: carga clientes + entrenadores + admins; entrenador: solo clientes
+/**
+ * Cargar clientes y empleados según el rol del usuario autenticado.
+ * Admin: clientes + entrenadores + admins; entrenador: solo clientes.
+ * @param {'admin'|'entrenador'|string} rolUsuario Rol del usuario autenticado
+ * @returns {{clientes: object[], empleados: object[], setClientes: Function, setEmpleados: Function, cargando: boolean, recargar: () => void}}
+ */
 export const useUsuarios = (rolUsuario) => {
     const [clientes, setClientes]   = useState([])
     const [empleados, setEmpleados] = useState([])
@@ -31,7 +35,10 @@ export const useUsuarios = (rolUsuario) => {
             .finally(() => setCargando(false))
     }, [rolUsuario, contador])
 
-    // setCargando(true) aquí, no en el effect, para evitar setState síncrono dentro de useEffect
+    /**
+     * Forzar recarga de usuarios desde la API.
+     * setCargando(true) aquí, no en el effect, para evitar setState síncrono dentro de useEffect.
+     */
     const recargar = () => { setCargando(true); setContador(c => c + 1) }
 
     return { clientes, empleados, setClientes, setEmpleados, cargando, recargar }

@@ -5,21 +5,33 @@ import api from '../../services/api'
 import { color, s } from '../../styles'
 import { formatearFecha } from '../../utils'
 
-// Mapear rol a su segmento de URL en la API
+/**
+ * Mapear rol a su segmento de URL en la API.
+ * @param {'admin'|'entrenador'|'cliente'|string} rol
+ * @returns {string} Segmento de ruta (administradores, entrenadores o clientes)
+ */
 const endpointPorRol = (rol) => {
   if (rol === 'admin')      return 'administradores'
   if (rol === 'entrenador') return 'entrenadores'
   return 'clientes'
 }
 
-// Etiqueta legible del rol
+/**
+ * Devolver la etiqueta legible (humana) del rol.
+ * @param {'admin'|'entrenador'|'cliente'|string} rol
+ * @returns {string}
+ */
 const etiquetaRol = (rol) => {
   if (rol === 'admin')      return 'Administrador'
   if (rol === 'entrenador') return 'Entrenador'
   return 'Cliente'
 }
 
-// Card resumen de un usuario inactivo candidato a reactivar
+/**
+ * Card resumen de un usuario inactivo candidato a reactivar.
+ * @param {{usuario: object, onReactivar: (usuario: object) => void, reactivando: boolean}} props
+ * @returns {JSX.Element}
+ */
 function CardInactivo({ usuario, onReactivar, reactivando }) {
   return (
     <div className={`rounded-lg border ${color.borde} p-4 flex flex-col gap-2`}>
@@ -48,12 +60,21 @@ function CardInactivo({ usuario, onReactivar, reactivando }) {
   )
 }
 
-// Modal que aparece al crear un usuario cuando hay coincidencia con uno o más usuarios de baja.
-// Muestra los candidatos y permite reactivar uno; cancelar vuelve al formulario para que el admin cambie los datos.
+/**
+ * Modal que aparece al crear un usuario cuando hay coincidencia con uno o más usuarios de baja.
+ * Muestra los candidatos y permite reactivar uno; cancelar vuelve al formulario para cambiar los datos.
+ * @param {{inactivos: object[], onClose: () => void, onReactivado?: (datos: object) => void}} props
+ * @returns {JSX.Element}
+ */
 function ModalReactivar({ inactivos, onClose, onReactivado }) {
   const [reactivandoId, setReactivandoId] = useState(null)
   const [resultado, setResultado] = useState(null)
 
+  /**
+   * Llamar al endpoint de alta para el usuario seleccionado y mostrar el resultado.
+   * @param {object} usuario Usuario inactivo a reactivar
+   * @returns {Promise<void>}
+   */
   const reactivar = async (usuario) => {
     setReactivandoId(usuario._id)
     try {

@@ -1,4 +1,9 @@
-// Calcular IMC = peso(kg) / altura(m)²; devuelve null si los datos no son válidos
+/**
+ * Calcular IMC = peso(kg) / altura(m)². Redondeado a 1 decimal.
+ * @param {number|string} peso Peso en kilogramos
+ * @param {number|string} altura Altura en centímetros
+ * @returns {number|null} IMC redondeado o null si los datos no son válidos
+ */
 export const calcularIMC = (peso, altura) => {
   const p = Number(peso)
   const a = Number(altura)
@@ -27,7 +32,13 @@ const CONSTANTES_DW = {
   ],
 }
 
-// Calcular % grasa con Durnin-Womersley a partir de los 4 pliegues, sexo y fecha de nacimiento
+/**
+ * Calcular % grasa corporal con Durnin-Womersley a partir de los 4 pliegues, sexo y fecha de nacimiento.
+ * @param {{biceps:number, triceps:number, subescapular:number, cresta_iliaca:number}} pliegues Pliegues en mm
+ * @param {'masculino'|'femenino'} sexo
+ * @param {string|Date|null} fechaNacimiento Fecha de nacimiento; si no se aporta se asume edad 30
+ * @returns {number|null} Porcentaje de grasa redondeado a 1 decimal y acotado a [0,100], o null si datos inválidos
+ */
 export const calcularPorcentajeGrasa = (pliegues, sexo, fechaNacimiento) => {
   if (!sexo || !CONSTANTES_DW[sexo]) return null
 

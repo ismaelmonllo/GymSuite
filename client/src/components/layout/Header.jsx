@@ -1,11 +1,21 @@
 import { LogOut } from 'lucide-react'
 import { color } from '../../styles'
 
-// Obtener las iniciales de nombre y apellidos
+/**
+ * Obtener las iniciales (mayúsculas) del nombre y apellidos para el avatar.
+ * @param {string} [nombre='']
+ * @param {string} [apellidos='']
+ * @returns {string} Iniciales en mayúsculas, p. ej. "IM"
+ */
 const iniciales = (nombre = '', apellidos = '') =>
   `${nombre[0] ?? ''}${apellidos[0] ?? ''}`.toUpperCase()
 
-// Cabecera común: avatar + info usuario a la izquierda, título centrado, logout a la derecha
+/**
+ * Cabecera común de la app: avatar + info usuario a la izquierda, título centrado, slot + logout a la derecha.
+ * Sin usuario muestra solo el título centrado (pantalla de login).
+ * @param {{usuario?: object, subtitulo?: string, onLogout?: () => void, onAvatarClick?: () => void, children?: React.ReactNode}} props
+ * @returns {JSX.Element}
+ */
 function Header({ usuario, subtitulo, onLogout, onAvatarClick, children }) {
   // Sin usuario: solo título centrado (pantalla de login)
   if (!usuario) {
