@@ -22,8 +22,11 @@ const cookieOpciones = {
 // para que el tiempo de respuesta sea similar al de un correo válido y no se filtre la existencia
 const HASH_DUMMY = bcrypt.hashSync('dummy', 10);
 
-// Generar código OTP numérico de 6 dígitos usando un PRNG criptográficamente seguro
-// crypto.randomInt evita patrones predecibles de Math.random
+/**
+ * Generar un código OTP numérico de 6 dígitos usando un PRNG criptográficamente
+ * seguro (`crypto.randomInt`), evitando los patrones predecibles de `Math.random`.
+ * @returns {string} Código de 6 dígitos como string (con ceros a la izquierda si aplica).
+ */
 const generarOTP = () => String(crypto.randomInt(100000, 1000000));
 
 // Opciones de la cookie de dispositivo de confianza 2FA: 7 días (compromiso UX vs seguridad)
@@ -34,9 +37,15 @@ const cookie2FAOpciones = {
     maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-// Firmar la cookie 2fa_verificado atándola al usuario y a un hash del Usuario-Agent
-// El formato es `<usuarioId>.<uaHash16>.<firma32>` para que copiar la cookie a otro navegador
-// (UA distinta) la invalide sin necesidad de mantener estado en servidor
+/**
+ * Firmar la cookie `2fa_verificado` atándola al usuario y a un hash del
+ * User-Agent. El formato resultante es `<usuarioId>.<uaHash16>.<firma32>`,
+ * de manera que copiar la cookie a otro navegador (con UA distinta) la
+ * invalida sin necesidad de mantener estado en el servidor.
+ * @param {string} usuarioId - ID del usuario al que se ata la cookie.
+ * @param {string|undefined} userAgent - Cabecera User-Agent del request.
+ * @returns {string} Valor firmado para guardar en la cookie.
+ */
 const firmar2FA = (usuarioId, userAgent) => {
     const uaHash = crypto.createHash('sha256').update(userAgent ?? '').digest('hex').slice(0, 16);
     const datos = `${usuarioId}.${uaHash}`;
@@ -48,7 +57,15 @@ const firmar2FA = (usuarioId, userAgent) => {
     return `${datos}.${firma}`;
 };
 
-// Verificar la cookie 2fa_verificado en tiempo constante; cualquier alteración o cambio de UA falla
+/**
+ * Verificar la cookie `2fa_verificado` en tiempo constante. Cualquier
+ * alteración del valor o cambio del User-Agent invalida la firma y la
+ * función devuelve false.
+ * @param {string|undefined} cookie - Valor de la cookie tal como llega.
+ * @param {string} usuarioId - ID del usuario que está iniciando sesión.
+ * @param {string|undefined} userAgent - Cabecera User-Agent del request.
+ * @returns {boolean} True si la cookie es válida para este usuario y UA.
+ */
 const verificar2FACookie = (cookie, usuarioId, userAgent) => {
     if (!cookie) return false;
     if (cookie.split('.').length !== 3) return false;
@@ -59,7 +76,14 @@ const verificar2FACookie = (cookie, usuarioId, userAgent) => {
     return crypto.timingSafeEqual(a, b);
 };
 
-// Emitir JWT de acceso (15m) y refresh token en cookie httpOnly (7d)
+/**
+ * Emitir el par de tokens al usuario: JWT de acceso (15 minutos) y refresh
+ * token en cookie httpOnly (7 días). El payload de acceso incluye datos
+ * básicos del usuario y el flag `forzar_cambio_password`.
+ * @param {import('mongoose').Document} usuario - Documento Mongoose del usuario.
+ * @param {import('express').Response} res - Para fijar la cookie del refresh.
+ * @returns {string} JWT de acceso para devolver al frontend.
+ */
 const emitirTokens = (usuario, res) => {
     const userToken = jwt.sign(
         {
@@ -81,7 +105,15 @@ const emitirTokens = (usuario, res) => {
     return userToken;
 };
 
-// Iniciar sesión: validar credenciales y comprobar si se necesita 2FA
+/**
+ * Iniciar sesión. Valida credenciales y rol según pestaña (cliente/trabajador),
+ * decide si el dispositivo necesita 2FA y, si lo necesita, envía el OTP por
+ * email. Si la cookie de dispositivo de confianza es válida, salta el 2FA y
+ * emite tokens directamente.
+ * @param {import('express').Request} req - Body: `{ correo, contrasena, tab }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con `{ token }` o `{ requiere2FA: true }`; 401/403 si falla.
+ */
 export const login = asyncHandler(async (req, res) => {
 
     const { correo, contrasena, tab } = req.body;
@@ -161,7 +193,14 @@ export const login = asyncHandler(async (req, res) => {
 
 });
 
-// Verificar el código OTP recibido por email y completar el login
+/**
+ * Verificar el código OTP que el usuario ha recibido por email y completar
+ * el login. Aplica límite de intentos (5), control de expiración y, si todo
+ * es correcto, marca el dispositivo como verificado (cookie 7d) y emite los tokens.
+ * @param {import('express').Request} req - Body: `{ correo, codigo }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con token, 401 si OTP inválido/expirado, 429 si se superan los intentos.
+ */
 export const verificar2FA = asyncHandler(async (req, res) => {
 
     const { correo, codigo } = req.body;
@@ -212,7 +251,14 @@ export const verificar2FA = asyncHandler(async (req, res) => {
 
 });
 
-// Renovar el token de acceso usando el refresh token almacenado en la cookie
+/**
+ * Renovar el JWT de acceso usando el refresh token almacenado en la cookie
+ * httpOnly. Rechaza también si el usuario ha sido dado de baja, lo que cierra
+ * la sesión de 7d para usuarios desactivados.
+ * @param {import('express').Request} req - Cookie `refresh_token` requerida.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con nuevo token de acceso o 401 si el refresh no vale.
+ */
 export const refresh = asyncHandler(async (req, res) => {
 
     const refreshToken = req.cookies?.refresh_token;
@@ -249,7 +295,14 @@ export const refresh = asyncHandler(async (req, res) => {
 
 });
 
-// Cambiar contraseña propia: verificar la actual, validar la nueva y actualizarla en BD
+/**
+ * Cambiar la contraseña propia del usuario autenticado. Verifica la
+ * contraseña actual, valida la nueva, la hashea con bcrypt y desactiva el
+ * flag `forzar_cambio_password`. Emite un nuevo token con el flag actualizado.
+ * @param {import('express').Request} req - Body: `{ contrasenaActual, contrasenaNueva }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con `{ ok: true, token }`; 401 si la actual no coincide.
+ */
 export const cambiarContrasena = asyncHandler(async (req, res) => {
 
     const { contrasenaActual, contrasenaNueva } = req.body;
@@ -281,8 +334,15 @@ export const cambiarContrasena = asyncHandler(async (req, res) => {
 
 });
 
-// Resetear contraseña: generar un token de un solo uso, guardarlo en BD y enviar el link por email
-// El link caduca en 30 min; la contraseña actual del usuario no cambia hasta que use el link
+/**
+ * Resetear la contraseña de un usuario por parte de un admin. Genera un token
+ * de un solo uso (64 hex chars), lo guarda con expiración de 30 min y envía
+ * un enlace al correo del usuario. La contraseña actual no cambia hasta que
+ * el usuario use el enlace.
+ * @param {import('express').Request} req - `params.id` del usuario a resetear.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con `{ ok: true }`; 400 si el id es inválido o 404 si no existe.
+ */
 export const resetearPassword = asyncHandler(async (req, res) => {
 
     const { valido } = validarObjectId(req.params.id);
@@ -330,8 +390,14 @@ export const resetearPassword = asyncHandler(async (req, res) => {
 
 });
 
-// Restablecer contraseña usando el token del link enviado por email
-// El token se borra tras usarse para que no pueda reutilizarse
+/**
+ * Restablecer la contraseña usando el token del enlace enviado por email.
+ * Comprueba expiración, hashea la nueva contraseña y elimina el token para
+ * que no pueda reutilizarse.
+ * @param {import('express').Request} req - Body: `{ token, contrasenaNueva }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con `{ ok: true }`; 400 si el token no vale o ha caducado.
+ */
 export const restablecerPassword = asyncHandler(async (req, res) => {
 
     const { token, contrasenaNueva } = req.body;
@@ -357,8 +423,14 @@ export const restablecerPassword = asyncHandler(async (req, res) => {
 
 });
 
-// Cerrar sesión: eliminar las cookies de refresh y de dispositivo de confianza 2FA
-// Las opciones deben coincidir con las del set para que el navegador acepte el borrado
+/**
+ * Cerrar sesión. Elimina las cookies `refresh_token` y `2fa_verificado`.
+ * Las opciones del clearCookie deben coincidir con las del set original para
+ * que el navegador acepte el borrado.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {import('express').Response} 200 con `{ mensaje: 'Sesión cerrada' }`.
+ */
 export const logout = (_req, res) => {
     const opcionesBase = {
         httpOnly: true,

@@ -136,4 +136,26 @@ router.patch('/:id/baja', verificarToken, verificarRol('admin'), darDeBaja);
  */
 router.patch('/:id/alta', verificarToken, verificarRol('admin'), darDeAlta);
 
+/**
+ * @swagger
+ * /administradores/{id}:
+ *   delete:
+ *     summary: Eliminar administrador definitivamente
+ *     description: Borrado físico del usuario. Solo admin. Para desactivar sin borrar usar PATCH /administradores/{id}/baja.
+ *     tags: [Administradores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Usuario eliminado correctamente
+ *       400:
+ *         description: ID no válido
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.delete('/:id', verificarToken, verificarRol('admin'), eliminarUsuario);
+
 export default router;

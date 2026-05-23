@@ -6,8 +6,14 @@ import { auditar } from '../utils/audit.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { formatearMes, sumarMeses } from '../utils/fechas.js';
 
-// Devolver el historial de pagos de un cliente concreto para que el entrenador o admin lo consulte
-// id_usuario viene de los parámetros de la ruta; ordenado del mes más reciente al más antiguo
+/**
+ * Devolver el historial completo de pagos de un cliente concreto, ordenado
+ * del mes más reciente al más antiguo. Pensado para que admin o entrenador
+ * consulten el estado de pagos de un cliente.
+ * @param {import('express').Request} req - `params.id_usuario` del cliente.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con array de pagos; 400 si el id es inválido.
+ */
 export const obtenerPagos = asyncHandler(async (req, res) => {
 
     const { id_usuario } = req.params;
@@ -23,8 +29,14 @@ export const obtenerPagos = asyncHandler(async (req, res) => {
 
 });
 
-// Devolver el historial de pagos del cliente que está logueado para que lo consulte desde su perfil
-// id_usuario se extrae del token JWT, no del body ni de los parámetros
+/**
+ * Devolver el historial de pagos del cliente autenticado. El id se lee del
+ * JWT (`req.usuario.id`), nunca del body ni de parámetros, para que un cliente
+ * no pueda consultar los pagos de otro.
+ * @param {import('express').Request} req - `req.usuario.id` (lo rellena `verificarToken`).
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con array de pagos del cliente.
+ */
 export const obtenerMisPagos = asyncHandler(async (req, res) => {
 
     const id_usuario = req.usuario.id;
@@ -37,10 +49,17 @@ export const obtenerMisPagos = asyncHandler(async (req, res) => {
 
 });
 
-// Generar los pagos del mes para todos los clientes activos con cuota asignada
-// Se llama desde el cron mensual o manualmente desde el panel de admin
-// Solo genera si el cliente no tiene ya un pago para ese mes (evita duplicados)
-// Cada lote de N pagos de un mismo cliente comparte grupo_pago para poder gestionarlos juntos
+/**
+ * Generar los pagos del mes para todos los clientes activos con cuota
+ * asignada. Función idempotente: si un cliente ya tiene pago para el mes
+ * actual no se le vuelve a generar. Para cuotas multimensuales se crean N
+ * filas (una por mes) compartiendo un mismo `grupo_pago`, con reparto
+ * exacto al céntimo (el último mes absorbe el resto de la división entera).
+ * Se invoca tanto desde el cron mensual como manualmente desde el panel de admin.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 201 con número de pagos generados, o 200 si no había nada que generar.
+ */
 export const generarPagos = asyncHandler(async (req, res) => {
 
     const ahora = new Date();
@@ -104,8 +123,16 @@ export const generarPagos = asyncHandler(async (req, res) => {
 
 });
 
-// Confirmar que un cliente ha pagado su cuota, marcando todos los meses del grupo como pagados
-// Recibe grupo_pago en el body; registrado_por se extrae del token JWT para saber quién lo confirmó
+/**
+ * Confirmar que un cliente ha pagado su cuota. Marca todos los pagos del
+ * `grupo_pago` como confirmados a la vez (`pendiente: false` + `fecha` +
+ * `registrado_por`). En la misma respuesta devuelve el último pago
+ * actualizado del cliente para que el frontend pueda refrescar solo esa
+ * entrada del mapa sin volver a llamar al endpoint de stats.
+ * @param {import('express').Request} req - Body: `{ grupo_pago: ObjectId }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con info del grupo confirmado; 400/404 si no se encuentra.
+ */
 export const registrarPago = asyncHandler(async (req, res) => {
 
     const { grupo_pago } = req.body;
@@ -149,7 +176,13 @@ export const registrarPago = asyncHandler(async (req, res) => {
 
 // FUNCIONES PARA STATS
 
-// Calcular el total recaudado en el mes actual (pagos confirmados, pendiente: false)
+/**
+ * Calcular el total recaudado en el mes actual sumando todos los pagos
+ * confirmados (`pendiente: false`) del mes en curso.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ mes, total }` con el total en céntimos.
+ */
 export const obtenerStatsMes = asyncHandler(async (_req, res) => {
 
     const mesActual = formatearMes(new Date());
@@ -167,7 +200,14 @@ export const obtenerStatsMes = asyncHandler(async (_req, res) => {
 
 });
 
-// Calcular el total recaudado por mes en los últimos 12 meses (pagos confirmados, pendiente: false)
+/**
+ * Calcular el total recaudado mes a mes en los últimos 12 meses (incluyendo
+ * el actual). Devuelve siempre los 12 meses, poniendo 0 en los que no haya
+ * tenido pagos confirmados, para que la gráfica del frontend no quede con huecos.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON con array de `{ mes, total }` ordenados cronológicamente.
+ */
 export const obtenerStatsAnual = asyncHandler(async (_req, res) => {
 
     const ahora = new Date();
@@ -195,7 +235,13 @@ export const obtenerStatsAnual = asyncHandler(async (_req, res) => {
 
 });
 
-// Contar cuántos pagos del mes actual están confirmados
+/**
+ * Contar cuántos pagos del mes actual están ya confirmados (`pendiente: false`).
+ * Se usa `countDocuments` en lugar de cargar documentos para eficiencia.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ mes, total }`.
+ */
 export const obtenerStatsMesPagados = asyncHandler(async (_req, res) => {
 
     // Calcular el mes actual en formato "YYYY-MM" para filtrar los pagos
@@ -209,7 +255,13 @@ export const obtenerStatsMesPagados = asyncHandler(async (_req, res) => {
 
 });
 
-// Contar cuántos pagos del mes actual siguen sin confirmar
+/**
+ * Contar cuántos pagos del mes actual siguen pendientes (`pendiente: true`).
+ * Se usa `countDocuments` por eficiencia, igual que en su contraparte de confirmados.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ mes, total }`.
+ */
 export const obtenerStatsMesPendientes = asyncHandler(async (_req, res) => {
 
     // Calcular el mes actual en formato "YYYY-MM" para filtrar los pagos
@@ -223,8 +275,14 @@ export const obtenerStatsMesPendientes = asyncHandler(async (_req, res) => {
 
 });
 
-// Devolver el último pago de cada cliente hasta el mes actual: { clienteId: { pendiente, mes } }
-// Filtra por mes <= mesActual para ignorar meses futuros generados por cuotas multimensuales
+/**
+ * Devolver un mapa con el último pago de cada cliente hasta el mes actual.
+ * Filtra por `mes <= mesActual` para ignorar los meses futuros generados por
+ * cuotas multimensuales (trimestral, anual…), que distorsionarían el estado real.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ clienteId: { pendiente, mes, grupo_pago, tipo_cuota } }`.
+ */
 export const obtenerUltimoPagoPorCliente = asyncHandler(async (_req, res) => {
 
     const mesActual = formatearMes(new Date());

@@ -3,7 +3,14 @@ import { validarCrearMedicion, validarEditarMedicion } from '../validators/valid
 import { validarObjectId } from '../validators/validarCampos.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
-// Obtener historial de mediciones de un cliente, ordenadas de más reciente a más antigua
+/**
+ * Obtener el historial completo de mediciones de un cliente, ordenado de la
+ * más reciente a la más antigua. Pensado para que admin o entrenador consulten
+ * el progreso de un cliente.
+ * @param {import('express').Request} req - `params.id_usuario` del cliente.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con array de mediciones; 400 si el id es inválido.
+ */
 export const obtenerMediciones = asyncHandler(async (req, res) => {
 
     // Extraer el id del cliente de los parámetros de la ruta
@@ -20,7 +27,14 @@ export const obtenerMediciones = asyncHandler(async (req, res) => {
 
 });
 
-// Obtener las mediciones del cliente autenticado leyendo su id del token JWT
+/**
+ * Obtener las mediciones propias del cliente autenticado. El id se lee del
+ * JWT (`req.usuario.id`), nunca de parámetros, para que un cliente no pueda
+ * pedir las mediciones de otro.
+ * @param {import('express').Request} req - `req.usuario.id` (lo rellena `verificarToken`).
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con array de mediciones del cliente.
+ */
 export const obtenerMisMediciones = asyncHandler(async (req, res) => {
 
     // Leer el id del usuario desde el token, no desde los parámetros
@@ -33,7 +47,13 @@ export const obtenerMisMediciones = asyncHandler(async (req, res) => {
 
 });
 
-// Obtener una medición concreta por su id
+/**
+ * Obtener una medición concreta por su id. Si el solicitante es un cliente,
+ * comprueba además que la medición le pertenece (evita IDOR iterando ids).
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con la medición; 400/403/404 según el caso.
+ */
 export const obtenerMedicion = asyncHandler(async (req, res) => {
 
     // Extraer el id de la medición de los parámetros de la ruta
@@ -56,7 +76,14 @@ export const obtenerMedicion = asyncHandler(async (req, res) => {
 
 });
 
-// Crear una nueva medición: validar datos, asignar entrenador desde el token y guardar
+/**
+ * Crear una nueva medición para un cliente. El `entrenador_id` se asigna
+ * desde el token (no del body) para garantizar trazabilidad y evitar que se
+ * suplante quién registró la medición.
+ * @param {import('express').Request} req - Body con los datos de la medición.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 201 con la medición creada o 400 si los datos no son válidos.
+ */
 export const crearMedicion = asyncHandler(async (req, res) => {
 
     // Obtener el id del entrenador desde el token, no del body
@@ -74,7 +101,14 @@ export const crearMedicion = asyncHandler(async (req, res) => {
 
 });
 
-// Editar una medición existente: validar datos y actualizar por id
+/**
+ * Editar una medición existente. Solo el entrenador que la registró
+ * originalmente puede modificarla, para conservar la responsabilidad sobre
+ * los datos registrados.
+ * @param {import('express').Request} req - `params.id` + body parcial.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con la medición actualizada; 403 si no es el autor; 404 si no existe.
+ */
 export const editarMedicion = asyncHandler(async (req, res) => {
 
     // Extraer el id de la medición de los parámetros de la ruta
@@ -100,7 +134,13 @@ export const editarMedicion = asyncHandler(async (req, res) => {
 
 });
 
-// Eliminar una medición por su id
+/**
+ * Eliminar una medición por su id. Igual que en edición, solo el entrenador
+ * que la registró puede borrarla.
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 si se elimina; 403 si no es el autor; 404 si no existe.
+ */
 export const eliminarMedicion = asyncHandler(async (req, res) => {
 
     // Extraer el id de la medición de los parámetros de la ruta

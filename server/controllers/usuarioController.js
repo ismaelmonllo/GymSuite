@@ -14,12 +14,19 @@ const CAMPOS_EDITABLES_CLIENTE = ['nombre', 'apellidos', 'correo', 'telefono', '
 // Campos que el admin puede modificar en un empleado (sin campos exclusivos de cliente)
 const CAMPOS_EDITABLES_EMPLEADO = ['nombre', 'apellidos', 'correo', 'telefono', 'direccion', 'fecha_nacimiento', 'DNI', 'sexo'];
 
-// Detectar duplicados de DNI o correo al crear un usuario.
-// El DNI solo colisiona dentro del mismo rol; el correo colisiona globalmente.
-// Devuelve:
-//   { bloqueo: { campo, mensaje } } si hay un duplicado activo o un correo perteneciente a otro rol inactivo
-//   { inactivos: [...] } con los candidatos a reactivar si los hay (uno o dos según coincidan en el mismo usuario o no)
-//   { } si no hay ningún duplicado
+/**
+ * Detectar duplicados de DNI o correo al crear un nuevo usuario. El DNI solo
+ * colisiona dentro del mismo rol, mientras que el correo colisiona globalmente.
+ * Devuelve uno de tres estados según el caso:
+ * - `{ bloqueo: { campo, mensaje } }` si hay un duplicado activo o un correo
+ *   que pertenece a una cuenta inactiva de otro rol.
+ * - `{ inactivos: [...] }` con candidatos a reactivar (uno o dos según el caso).
+ * - `{}` si no hay ningún conflicto.
+ * @param {string} DNI - DNI a comprobar.
+ * @param {string} correo - Correo a comprobar.
+ * @param {'admin'|'entrenador'|'cliente'} rolNuevo - Rol del usuario que se quiere crear.
+ * @returns {Promise<{bloqueo?: {campo: string, mensaje: string}, inactivos?: Array}>}
+ */
 const detectarDuplicadosAlCrear = async (DNI, correo, rolNuevo) => {
     const porDni    = await Usuario.findOne({ DNI, rol: rolNuevo });
     const porCorreo = await Usuario.findOne({ correo });
@@ -41,7 +48,12 @@ const detectarDuplicadosAlCrear = async (DNI, correo, rolNuevo) => {
     return inactivos.length > 0 ? { inactivos } : {};
 };
 
-// Reducir un usuario a los campos que se muestran en el modal de reactivación
+/**
+ * Reducir un documento de usuario a los campos que se muestran en el modal
+ * de reactivación. Evita exponer campos sensibles innecesariamente.
+ * @param {import('mongoose').Document} usuario - Documento del usuario inactivo.
+ * @returns {{_id: string, nombre: string, apellidos: string, fecha_nacimiento: Date, DNI: string, correo: string, rol: string}}
+ */
 const proyectarInactivo = (usuario) => ({
     _id:              usuario._id,
     nombre:           usuario.nombre,
@@ -52,8 +64,14 @@ const proyectarInactivo = (usuario) => ({
     rol:              usuario.rol,
 });
 
-// Obtener usuarios con rol 'cliente', con filtros opcionales y paginación opcional
-// Si no se pasan pagina/limite, devuelve todos (comportamiento actual para no romper clientes existentes)
+/**
+ * Listar usuarios con rol `cliente`, aplicando filtros opcionales y
+ * paginación opcional. Si no se pasan `pagina` ni `limite`, devuelve todos
+ * los clientes (comportamiento retrocompatible).
+ * @param {import('express').Request} req - Query: `{ activo?, nivel?, tipo_cuota?, pagina?, limite? }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON con array de clientes (y datos de paginación si aplica).
+ */
 export const listarClientes = asyncHandler(async (req, res) => {
 
     const { activo, nivel, tipo_cuota, pagina, limite } = req.query;
@@ -80,7 +98,13 @@ export const listarClientes = asyncHandler(async (req, res) => {
 
 });
 
-// Devolver el perfil completo del cliente autenticado con la cuota populada
+/**
+ * Devolver el perfil completo del cliente autenticado, con el tipo de cuota
+ * ya populado para no tener que hacer una segunda petición.
+ * @param {import('express').Request} req - `req.usuario.id` (lo rellena `verificarToken`).
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON con el cliente, o 404 si no se encuentra.
+ */
 export const obtenerMiPerfil = asyncHandler(async (req, res) => {
 
     const cliente = await Usuario.findById(req.usuario.id).populate('tipo_cuota');
@@ -89,7 +113,13 @@ export const obtenerMiPerfil = asyncHandler(async (req, res) => {
 
 });
 
-// Buscar un cliente por su ID y devolverlo si existe y tiene rol 'cliente'
+/**
+ * Buscar un cliente por su ID y devolverlo solo si existe y tiene rol `cliente`.
+ * Evita filtrar datos de empleados a través de este endpoint.
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el cliente; 400 si el id es inválido; 404 si no existe o no es cliente.
+ */
 export const verCliente = asyncHandler(async (req, res) => {
 
     const { valido } = validarObjectId(req.params.id);
@@ -105,7 +135,15 @@ export const verCliente = asyncHandler(async (req, res) => {
 
 });
 
-// Crear un nuevo cliente: validar datos, comprobar duplicados, generar contraseña temporal y enviar email de bienvenida
+/**
+ * Crear un nuevo cliente. Valida los datos, comprueba duplicados (puede
+ * devolver candidatos a reactivar), genera una contraseña temporal segura,
+ * la hashea con bcrypt y envía un email de bienvenida con la temporal.
+ * Marca `forzar_cambio_password: true` para obligar al cambio en el primer login.
+ * @param {import('express').Request} req - Body con datos del cliente.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 201 si se crea, 400 si datos inválidos/duplicado, 409 si hay inactivos a reactivar.
+ */
 export const crearCliente = asyncHandler(async (req, res) => {
 
     const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, sexo, nivel, tipo_cuota } = req.body;
@@ -162,7 +200,15 @@ export const crearCliente = asyncHandler(async (req, res) => {
 
 });
 
-// Actualizar los datos de un cliente, ignorando campos que no se deben modificar desde aquí
+/**
+ * Actualizar los datos de un cliente. Aplica whitelist de campos editables
+ * para prevenir mass-assignment (no se puede tocar `activo`,
+ * `forzar_cambio_password`, etc. desde este endpoint) y comprueba duplicados
+ * de DNI y correo excluyendo el propio documento.
+ * @param {import('express').Request} req - `params.id` + body parcial.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el cliente actualizado o 400 si hay duplicados/errores.
+ */
 export const editarCliente = asyncHandler(async (req, res) => {
 
     // Extraer solo los campos permitidos (whitelist): evita mass-assignment de activo, forzar_cambio_password, etc.
@@ -191,7 +237,13 @@ export const editarCliente = asyncHandler(async (req, res) => {
 
 });
 
-// Desactivar un usuario marcando su campo 'activo' como false
+/**
+ * Dar de baja a un usuario (baja lógica): marca `activo: false` sin borrar
+ * el documento, conservando los datos para histórico.
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el usuario actualizado o 404 si no existe.
+ */
 export const darDeBaja = asyncHandler(async (req, res) => {
 
     const usuarioActualizado = await Usuario.findByIdAndUpdate(
@@ -207,8 +259,14 @@ export const darDeBaja = asyncHandler(async (req, res) => {
 
 });
 
-// Reactivar un usuario marcando su campo 'activo' como true y refrescando su fecha de alta
-// La fecha de alta se actualiza porque la reactivación equivale a un nuevo periodo de actividad en el gimnasio
+/**
+ * Reactivar un usuario previamente dado de baja: marca `activo: true` y
+ * actualiza `fecha_alta` al momento actual (porque la reactivación se
+ * considera un nuevo periodo de actividad en el gimnasio).
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el usuario actualizado o 404 si no existe.
+ */
 export const darDeAlta = asyncHandler(async (req, res) => {
 
     const usuarioActualizado = await Usuario.findByIdAndUpdate(
@@ -224,7 +282,38 @@ export const darDeAlta = asyncHandler(async (req, res) => {
 
 });
 
-// Asignar un nuevo tipo de cuota a un cliente, eliminar sus pagos pendientes y actualizar el documento
+/**
+ * Eliminar un usuario de forma definitiva (borrado físico). Para una baja
+ * lógica sin borrar el documento, usar `darDeBaja`.
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el usuario borrado, 400 si el id es inválido o 404 si no existe.
+ */
+export const eliminarUsuario = asyncHandler(async (req, res) => {
+
+    // Validar el formato del ID antes de consultar para devolver 400 en vez de 500 ante un ID malformado
+    const { valido } = validarObjectId(req.params.id);
+    if (!valido) return res.status(400).json({ mensaje: 'ID no válido' });
+
+    const usuarioEliminado = await Usuario.findByIdAndDelete(req.params.id);
+
+    // findByIdAndDelete devuelve null si no existe ningún documento con ese ID
+    if (!usuarioEliminado) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+    // Registrar la acción en el log de auditoría tras confirmar el borrado
+    await auditar('eliminar_usuario', req, { usuario_id: req.params.id });
+    return res.status(200).json({ mensaje: 'Usuario eliminado correctamente', usuario: usuarioEliminado });
+
+});
+
+/**
+ * Asignar un nuevo tipo de cuota a un cliente. Al hacerlo, elimina los pagos
+ * pendientes (`pendiente: true`) del cliente para que se regeneren con el
+ * nuevo importe en la próxima ejecución de generación de pagos.
+ * @param {import('express').Request} req - `params.id` del cliente + body `{ nuevaCuota: ObjectId }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el cliente actualizado o 400/404 si hay errores.
+ */
 export const cambiarCuota = asyncHandler(async (req, res) => {
 
     const nuevaCuota = req.body.nuevaCuota;
@@ -248,8 +337,14 @@ export const cambiarCuota = asyncHandler(async (req, res) => {
 
 });
 
-// Obtener todos los empleados (admin y entrenador) de la base de datos, aplicando filtros opcionales
-// Obtener empleados (admin/entrenador) con filtros opcionales y paginación opcional
+/**
+ * Listar empleados (admin y entrenador) con filtros opcionales y paginación
+ * opcional. Rechaza peticiones que intenten filtrar por rol `cliente` para
+ * evitar usar este endpoint como atajo a la lista de clientes.
+ * @param {import('express').Request} req - Query: `{ activo?, rol?, pagina?, limite? }`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON con array de empleados (y datos de paginación si aplica).
+ */
 export const listarEmpleados = asyncHandler(async (req, res) => {
 
     const { activo, rol, pagina, limite } = req.query;
@@ -277,7 +372,13 @@ export const listarEmpleados = asyncHandler(async (req, res) => {
 
 });
 
-// Buscar un empleado por su ID y devolverlo si existe y tiene rol 'admin' o 'entrenador'
+/**
+ * Buscar un empleado por su ID y devolverlo solo si existe y tiene rol
+ * `admin` o `entrenador`. Evita filtrar datos de clientes por este endpoint.
+ * @param {import('express').Request} req - `params.id`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el empleado; 400 si id inválido; 404 si no existe o no es empleado.
+ */
 export const verEmpleado = asyncHandler(async (req, res) => {
 
     const { valido } = validarObjectId(req.params.id);
@@ -294,7 +395,15 @@ export const verEmpleado = asyncHandler(async (req, res) => {
 
 });
 
-// Crear un nuevo empleado (entrenador o admin): validar datos, comprobar duplicados, generar contraseña temporal y enviar email de bienvenida
+/**
+ * Crear un nuevo empleado (admin o entrenador). Valida los datos, comprueba
+ * duplicados (puede devolver candidatos a reactivar), genera contraseña
+ * temporal segura y envía email de bienvenida con la temporal. Fija
+ * `forzar_cambio_password: true` para obligar al cambio en el primer login.
+ * @param {import('express').Request} req - Body con datos del empleado, incluyendo `rol`.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 201 si se crea, 400 si datos inválidos/duplicado, 409 si hay inactivos a reactivar.
+ */
 export const crearEmpleado = asyncHandler(async (req, res) => {
 
     const { nombre, apellidos, correo, telefono, direccion, fecha_nacimiento, DNI, rol } = req.body;
@@ -348,7 +457,14 @@ export const crearEmpleado = asyncHandler(async (req, res) => {
 
 });
 
-// Actualizar los datos de un empleado, ignorando campos de cliente y campos no modificables
+/**
+ * Actualizar los datos de un empleado. Aplica whitelist de campos editables
+ * (sin campos exclusivos de cliente), comprueba que el destinatario es
+ * realmente un empleado y verifica duplicados de DNI/correo.
+ * @param {import('express').Request} req - `params.id` + body parcial.
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con el empleado actualizado; 403 si el id es de un cliente; 404 si no existe.
+ */
 export const editarEmpleado = asyncHandler(async (req, res) => {
 
     // Comprobar que el usuario objetivo es un empleado, no un cliente
@@ -384,7 +500,13 @@ export const editarEmpleado = asyncHandler(async (req, res) => {
 
 // FUNCIONES PARA STATS
 
-// Contar el total de clientes activos en la base de datos
+/**
+ * Contar el total de clientes activos en la base de datos. Usado por las
+ * estadísticas del dashboard del admin.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ total }`.
+ */
 export const obtenerTotalClientes = asyncHandler(async (_req, res) => {
 
     // Contar solo los usuarios con rol 'cliente' y activos
@@ -393,7 +515,13 @@ export const obtenerTotalClientes = asyncHandler(async (_req, res) => {
 
 });
 
-// Contar el total de trabajadores activos (entrenadores y admins) en la base de datos
+/**
+ * Contar el total de empleados activos (admin + entrenador). Usado por las
+ * estadísticas del dashboard del admin.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ total }`.
+ */
 export const obtenerTotalTrabajadores = asyncHandler(async (_req, res) => {
 
     // Contar los usuarios con rol 'entrenador' o 'admin' que estén activos
@@ -402,7 +530,13 @@ export const obtenerTotalTrabajadores = asyncHandler(async (_req, res) => {
 
 });
 
-// Contar los clientes dados de alta en el último mes y en el último año
+/**
+ * Contar los clientes dados de alta en el último mes y en el último año
+ * (desde el día 1 del mes actual y desde 12 meses atrás, respectivamente).
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON `{ ultimoMes, ultimoAnio }`.
+ */
 export const obtenerStatsAltas = asyncHandler(async (_req, res) => {
 
     const ahora = new Date();

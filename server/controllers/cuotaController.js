@@ -2,7 +2,13 @@ import Cuota from '../models/TipoCuotaModel.js';
 import { validarTipoCuota, validarEditarTipoCuota } from '../validators/validarRegistros.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
-// Devolver todas las cuotas disponibles para mostrarlas en el panel de admin o en el modal de cambio de cuota
+/**
+ * Devolver todas las cuotas disponibles para mostrarlas en el panel de admin
+ * o en el modal de cambio de cuota.
+ * @param {import('express').Request} _req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} JSON con array de cuotas
+ */
 export const listarCuotas = asyncHandler(async (_req, res) => {
 
     // Obtener todas las cuotas sin filtro; la colección suele tener pocos documentos
@@ -11,7 +17,12 @@ export const listarCuotas = asyncHandler(async (_req, res) => {
 
 });
 
-// Crear una nueva cuota con nombre, duración en meses e importe total
+/**
+ * Crear una nueva cuota con nombre, duración en meses e importe total.
+ * @param {import('express').Request} req - Body: { nombre, meses, importe (céntimos) }
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 201 con la cuota creada o 400 con errores de validación
+ */
 export const crearCuota = asyncHandler(async (req, res) => {
 
     // Extraer solo los campos necesarios para evitar que lleguen campos no deseados del body
@@ -28,7 +39,13 @@ export const crearCuota = asyncHandler(async (req, res) => {
 
 });
 
-// Actualizar los datos de una cuota existente; el id viene en los parámetros de la ruta
+/**
+ * Actualizar los datos de una cuota existente. Soporta edición parcial
+ * (solo se validan los campos presentes en el body).
+ * @param {import('express').Request} req - params.id + body parcial { nombre?, meses?, importe? }
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con la cuota actualizada, 400 si hay errores o 404 si no existe
+ */
 export const editarCuota = asyncHandler(async (req, res) => {
 
     const cuota_id = req.params.id;
@@ -58,7 +75,12 @@ export const editarCuota = asyncHandler(async (req, res) => {
 
 });
 
-// Eliminar una cuota por su id; el id viene en los parámetros de la ruta
+/**
+ * Eliminar una cuota por su id.
+ * @param {import('express').Request} req - params.id
+ * @param {import('express').Response} res
+ * @returns {Promise<void>} 200 con la cuota eliminada o 404 si no existe
+ */
 export const eliminarCuota = asyncHandler(async (req, res) => {
 
     const cuota_id = req.params.id;

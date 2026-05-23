@@ -1,7 +1,12 @@
 import nodemailer from 'nodemailer';
 
-// Escapar caracteres HTML para evitar XSS en templates de email
-// Necesario porque clientes de correo que renderizan HTML ejecutarían scripts inyectados en campos de usuario
+/**
+ * Escapar caracteres HTML peligrosos para evitar XSS al interpolar campos
+ * de usuario en plantillas HTML de email. Necesario porque los clientes de
+ * correo que renderizan HTML ejecutarían scripts inyectados.
+ * @param {string|null|undefined} txt - Texto a escapar (se convierte a string).
+ * @returns {string} Texto con `& < > " '` reemplazados por sus entidades HTML.
+ */
 export const escaparHtml = (txt) => String(txt ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -9,8 +14,14 @@ export const escaparHtml = (txt) => String(txt ?? '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-// Envolver contenido en la plantilla visual de GymSuite con la paleta de colores de la web
-// Usar tablas e inline styles para compatibilidad máxima con clientes de correo
+/**
+ * Envolver un contenido HTML en la plantilla visual de GymSuite con la paleta
+ * de colores de la web. Usa tablas e inline styles para compatibilidad máxima
+ * con los clientes de correo (Gmail, Outlook, Apple Mail…).
+ * @param {string} titulo - Título mostrado en la cabecera del cuerpo.
+ * @param {string} contenido - HTML del cuerpo del mensaje (ya escapado si aplica).
+ * @returns {string} HTML completo del email listo para enviar.
+ */
 export const emailTemplate = (titulo, contenido) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -51,9 +62,16 @@ export const emailTemplate = (titulo, contenido) => `
 </html>
 `;
 
-// Enviar email transaccional; recibe destinatario, asunto y cuerpo HTML
-// Crear el transporter aquí (no a nivel de módulo) para leer las variables de entorno
-// después de que dotenv.config() haya ejecutado
+/**
+ * Enviar un email transaccional vía Nodemailer + Gmail. El transporter se
+ * crea dentro de la función (no a nivel de módulo) para garantizar que las
+ * variables de entorno ya están cargadas por `dotenv.config()` cuando se usan.
+ * @param {object} opciones
+ * @param {string} opciones.to - Destinatario.
+ * @param {string} opciones.subject - Asunto del correo.
+ * @param {string} opciones.html - Cuerpo HTML del correo.
+ * @returns {Promise<void>}
+ */
 export const sendMail = async ({ to, subject, html }) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',

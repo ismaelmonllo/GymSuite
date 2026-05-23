@@ -1,7 +1,14 @@
 import AuditLog from '../models/AuditLogModel.js';
 
-// Registrar un evento de seguridad de forma asíncrona sin bloquear la respuesta
-// Los errores de escritura no se propagan: un fallo de audit nunca interrumpe el flujo normal
+/**
+ * Registrar un evento de seguridad en la colección `audit_logs` sin bloquear
+ * la respuesta. Los errores de escritura se capturan internamente: un fallo
+ * de audit nunca debe interrumpir el flujo normal de la petición.
+ * @param {string} evento - Identificador del evento (`login_ok`, `2fa_fail`, etc.).
+ * @param {import('express').Request} req - Para extraer usuario, IP y user-agent.
+ * @param {object} [datos={}] - Datos adicionales del evento (correo, contexto…).
+ * @returns {Promise<void>}
+ */
 export const auditar = async (evento, req, datos = {}) => {
     try {
         await AuditLog.create({

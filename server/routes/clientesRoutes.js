@@ -1,7 +1,17 @@
 // Rutas de clientes: todas requieren autenticación y rol admin o entrenador
 import express from 'express';
 import { verificarToken, verificarRol } from '../middleware/auth.js';
-import { listarClientes, verCliente, crearCliente, editarCliente, darDeBaja, darDeAlta, cambiarCuota, obtenerMiPerfil } from '../controllers/usuarioController.js';
+import {
+    listarClientes,
+    verCliente,
+    crearCliente,
+    editarCliente,
+    darDeBaja,
+    darDeAlta,
+    cambiarCuota,
+    obtenerMiPerfil,
+    eliminarUsuario,
+} from '../controllers/usuarioController.js';
 
 const router = express.Router();
 
@@ -188,5 +198,27 @@ router.patch('/:id/alta', verificarToken, verificarRol('admin', 'entrenador'), d
  *         description: Cliente no encontrado
  */
 router.patch('/:id/cuota', verificarToken, verificarRol('admin', 'entrenador'), cambiarCuota);
+
+/**
+ * @swagger
+ * /clientes/{id}:
+ *   delete:
+ *     summary: Eliminar cliente definitivamente
+ *     description: Borrado físico del usuario. Solo admin. Para desactivar sin borrar usar PATCH /clientes/{id}/baja.
+ *     tags: [Clientes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Usuario eliminado correctamente
+ *       400:
+ *         description: ID no válido
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.delete('/:id', verificarToken, verificarRol('admin'), eliminarUsuario);
 
 export default router;
