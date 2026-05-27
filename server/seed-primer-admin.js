@@ -7,10 +7,10 @@ import Usuario from './models/UsuarioModel.js'
 
 // ── Datos del primer admin ────────────────────────────────────────────────────
 // Cambiar la contraseña en el primer login (forzar_cambio_password: true)
-const PRIMER_ADMIN = {
-  nombre:            'Ismael',
-  apellidos:         'Monjas Llorente',
-  correo:            'isma01mm@gmail.com',
+const PRIMER_ADMIN = { // editar con datos del administrador real
+  nombre:            'admin',
+  apellidos:         'admin',
+  correo:            'admin@admin.com',
   telefono:          '500000001',
   // ⚠️ DNI con algoritmo educativo (% 19 en lugar del oficial % 23)
   DNI:               '10000001Q',
@@ -21,7 +21,7 @@ const PRIMER_ADMIN = {
   forzar_cambio_password: true,
 }
 
-const PASSWORD_INICIAL = 'Admin1234'
+const PASSWORD_INICIAL = 'Admin@1234' // configurar una contraseña segura para el primer admin
 
 // ── Conexión ──────────────────────────────────────────────────────────────────
 // Intentar URI principal; si falla, usar la de backup

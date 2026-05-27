@@ -185,3 +185,32 @@ Cambia tipo de cuota y **elimina los pagos pendientes** del cliente.
 > ⚠️ **Pagos pendientes eliminados**
 >
 > `Pagos.deleteMany({ cliente_id, pendiente: true })` se ejecuta para que los pagos se regeneren con la nueva cuota. Los pagos **confirmados** se conservan.
+
+## `DELETE /api/clientes/:id`
+
+Borrado físico del documento. Para baja lógica conservando los datos, usar `PATCH /:id/baja`.
+
+**Permisos:** `verificarToken` + `verificarRol('admin')` — **solo admin**, ni siquiera entrenadores pueden borrar clientes.
+
+**Params:** `id` — ObjectId del cliente.
+
+**200:**
+
+```json
+{ "mensaje": "Usuario eliminado correctamente", "usuario": { ... } }
+```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| 400 | ID inválido (no es ObjectId) |
+| 404 | No encontrado |
+
+> ⚠️ **Borrado irreversible**
+>
+> Se ejecuta `findByIdAndDelete`, que elimina el documento por completo. Las mediciones y pagos asociados al cliente quedan huérfanos (referencias rotas). Para preservar el histórico se recomienda usar la baja lógica (`PATCH /:id/baja`) en lugar de este endpoint.
+
+> ℹ️ **Auditoría**
+>
+> Se registra un evento `eliminar_usuario` en la colección `audit_logs` con el `usuario_id` borrado, la IP y el User-Agent del solicitante.

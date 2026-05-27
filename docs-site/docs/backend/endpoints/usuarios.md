@@ -100,6 +100,22 @@ Edita entrenador. Solo pasan al `$set` los campos de la whitelist `CAMPOS_EDITAB
 
 **Permisos:** `verificarToken` + `verificarRol('admin')`. **200:** `{ mensaje, usuario }`. Resetea `fecha_alta`.
 
+<a id="delete-apientrenadoresid"></a>
+
+### `DELETE /api/entrenadores/:id`
+
+Borrado físico del entrenador. Para baja lógica usar `PATCH /:id/baja`.
+
+**Permisos:** `verificarToken` + `verificarRol('admin')`.
+
+**200:** `{ mensaje, usuario }`. Registra evento `eliminar_usuario` en `audit_logs`.
+
+**Errores:** 400 si el ID no es ObjectId, 404 si no existe.
+
+> ⚠️ **Borrado irreversible**
+>
+> `findByIdAndDelete` elimina el documento. Las mediciones registradas por el entrenador conservan su `entrenador_id` apuntando a un usuario que ya no existe (referencia rota). Para preservar trazabilidad, preferir la baja lógica.
+
 <a id="administradores"></a>
 
 ## Administradores
@@ -121,6 +137,20 @@ Idénticos a entrenadores cambiando `forzarRolQuery('admin')` y `verificarRolBod
 ### `PUT /api/administradores/:id`, `PATCH /:id/baja`, `PATCH /:id/alta`
 
 **Permisos:** `verificarToken` + `verificarRol('admin')`.
+
+### `DELETE /api/administradores/:id`
+
+Borrado físico de un administrador. Para baja lógica usar `PATCH /:id/baja`.
+
+**Permisos:** `verificarToken` + `verificarRol('admin')`.
+
+**200:** `{ mensaje, usuario }`. Registra evento `eliminar_usuario` en `audit_logs`.
+
+**Errores:** 400 si el ID no es ObjectId, 404 si no existe.
+
+> ⚠️ **Sin protección anti-autoeliminación**
+>
+> El endpoint no comprueba si el admin que ejecuta el borrado es el mismo que está siendo eliminado. Un administrador puede borrar su propia cuenta. Si esto preocupa, añadir una guarda `if (req.params.id === req.usuario.id) return res.status(403)...`.
 
 ## Helpers internos del controller
 
