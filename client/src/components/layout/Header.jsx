@@ -21,7 +21,7 @@ function Header({ usuario, subtitulo, onLogout, onAvatarClick, children }) {
   if (!usuario) {
     return (
       <header className={`w-full border-b ${color.bordeHeader} px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-center`}>
-        <span className={`${color.texto} text-2xl font-bold tracking-wide`}>GymSuite</span>
+        <span className={`${color.texto} text-2xl sm:text-4xl font-bold tracking-wide`}>GymSuite</span>
       </header>
     )
   }
